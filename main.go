@@ -128,8 +128,20 @@ func DownloadLibrary(c *auth.Client) error {
 		return nil
 	}
 
-	if strings.ToLower(Prompt(fmt.Sprintf("Download %d new books from your Audible library? (yes/no)", len(books)), true)) != "yes" {
-		return fmt.Errorf("download aborted")
+outer:
+	for {
+		answer := strings.ToLower(Prompt(fmt.Sprintf("Download %d new books from your Audible library? (yes/no/list)", len(books)), true))
+		switch answer {
+		case "yes":
+			break outer
+		case "list":
+			for i, b := range books {
+				fmt.Printf("%02d) %s by %s\n", i+1, b.Title, strings.Join(b.Authors, ", "))
+			}
+			break
+		default:
+			return fmt.Errorf("download aborted")
+		}
 	}
 
 	pbgroup := mpb.New()
