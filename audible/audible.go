@@ -1,6 +1,8 @@
 package audible
 
 import (
+	"fmt"
+	"io"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -39,6 +41,31 @@ func (b *Book) Dir() string {
 		dirName = "Unknown Author"
 	}
 	return filepath.Join(dirName, utils.NormalizeFilename(b.Title))
+}
+
+func (b *Book) WriteInfo(w io.Writer) error {
+	_, err := fmt.Fprintln(w, b.Title)
+
+	_, err = fmt.Fprint(w, "Written by: ")
+	for i, name := range b.Authors {
+		if i > 0 {
+			_, err = fmt.Fprint(w, ", ")
+		}
+		_, err = fmt.Fprint(w, name)
+	}
+	_, err = fmt.Fprintln(w, "")
+
+	_, err = fmt.Fprint(w, "Narrated by: ")
+	for i, name := range b.Narrators {
+		if i > 0 {
+			_, err = fmt.Fprint(w, ", ")
+		}
+		_, err = fmt.Fprint(w, name)
+	}
+	_, err = fmt.Fprintln(w, "")
+
+	_, err = fmt.Fprintf(w, "URL: %s", b.DetailURL)
+	return err
 }
 
 func GetLibrary(c *auth.Client) ([]*Book, error) {

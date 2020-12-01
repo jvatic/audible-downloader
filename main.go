@@ -118,6 +118,18 @@ func DownloadLibrary(c *auth.Client) error {
 		return fmt.Errorf("Error reading library: %s\n", err)
 	}
 
+	// write info.txt file for all books already downloaded
+	for _, b := range books {
+		dir := b.Dir()
+		fi, err := os.Lstat(dir)
+		if err == nil && fi.IsDir() {
+			// book exists
+			if err := WriteInfoFile(b); err != nil {
+				fmt.Printf("Error writing info file for %q: %s\n", b.Title, err)
+			}
+		}
+	}
+
 	books, err = GetNewBooks(books)
 	if err != nil {
 		return fmt.Errorf("Error filtering library: %s\n", err)
@@ -187,6 +199,10 @@ outer:
 
 		dir := book.Dir()
 		os.MkdirAll(dir, 0755)
+
+		if err := WriteInfoFile(book); err != nil {
+			pushError(fmt.Errorf("Error writing info file for %q: %s", book.Title, err))
+		}
 
 		var bookwg sync.WaitGroup
 		for _, u := range book.DownloadURLs {
@@ -294,6 +310,15 @@ outer:
 	errsMtx.Unlock()
 
 	return nil
+}
+
+func WriteInfoFile(book *audible.Book) error {
+	f, err := os.OpenFile(filepath.Join(book.Dir(), "info.txt"), os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return book.WriteInfo(f)
 }
 
 func GetNewBooks(books []*audible.Book) ([]*audible.Book, error) {
