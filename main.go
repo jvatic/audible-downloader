@@ -250,6 +250,11 @@ func DownloadLibrary(c *auth.Client) error {
 					); err != nil {
 						pushError(fmt.Errorf("Error decrypting %s: %s", u, err))
 					}
+
+					// remove original .aax file
+					if err := os.Remove(outPath); err != nil {
+						pushError(fmt.Errorf("Error removing .aax file for %q: %s", book.Title, err))
+					}
 				}
 			}(u)
 		}
