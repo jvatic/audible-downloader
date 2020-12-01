@@ -11,7 +11,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/jvatic/audible-downloader/audible/auth"
 	"github.com/jvatic/audible-downloader/internal/utils"
-	"golang.org/x/net/html"
 )
 
 type Page struct {
@@ -26,7 +25,7 @@ type Book struct {
 	Duration     time.Duration
 	DownloadURLs map[string]string
 	ThumbURL     string
-	DetailURL    string
+	AudibleURL   string
 }
 
 func (b *Book) Dir() string {
@@ -64,7 +63,7 @@ func (b *Book) WriteInfo(w io.Writer) error {
 	}
 	_, err = fmt.Fprintln(w, "")
 
-	_, err = fmt.Fprintf(w, "URL: %s", b.DetailURL)
+	_, err = fmt.Fprintf(w, "URL: %s", b.AudibleURL)
 	return err
 }
 
@@ -120,13 +119,6 @@ func getLibraryPage(c *auth.Client, pageURL string) (*Page, error) {
 		page.NextPageURL = htmlquery.SelectAttr(paginationAnchors[len(paginationAnchors)-1], "href")
 	}
 
-	parseTitle := func(row *html.Node) string {
-		if node := htmlquery.FindOne(row, "//span[contains(@class, 'bc-size-headline3')]"); node != nil {
-			return strings.TrimSpace(htmlquery.InnerText(node))
-		}
-		return strings.TrimSpace(htmlquery.InnerText(row))
-	}
-
 	for _, row := range htmlquery.Find(doc, "//div[contains(@id, 'adbl-library-content-row-')]") {
 		book := &Book{}
 
@@ -134,7 +126,18 @@ func getLibraryPage(c *auth.Client, pageURL string) (*Page, error) {
 			book.ThumbURL = htmlquery.SelectAttr(img, "src")
 		}
 
-		book.Title = parseTitle(row)
+		// the title is always in the first <li>
+		if node := htmlquery.FindOne(row, "//li"); node != nil {
+			if a := htmlquery.FindOne(node, "/a"); a != nil {
+				// save a link to the book on Audible
+				if u, err := url.Parse(htmlquery.SelectAttr(a, "href")); err == nil {
+					u = resp.Request.URL.ResolveReference(u)
+					u.RawQuery = "" // query is unnecessary baggage
+					book.AudibleURL = u.String()
+				}
+			}
+			book.Title = strings.TrimSpace(htmlquery.InnerText(node))
+		}
 
 		if node := htmlquery.FindOne(row, "//li[contains(@class, 'authorLabel')]"); node != nil {
 			authors := []string{}
