@@ -123,6 +123,11 @@ func DownloadLibrary(c *auth.Client) error {
 		return fmt.Errorf("Error filtering library: %s\n", err)
 	}
 
+	if len(books) == 0 {
+		fmt.Printf("You have downloaded all the books from your Audible library.\n")
+		return nil
+	}
+
 	if strings.ToLower(Prompt(fmt.Sprintf("Download %d new books from your Audible library? (yes/no)", len(books)), true)) != "yes" {
 		return fmt.Errorf("download aborted")
 	}
