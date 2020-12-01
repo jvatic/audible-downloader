@@ -12,10 +12,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-type Library struct {
-	Books []*Book
-}
-
 type Page struct {
 	Books       []*Book
 	NextPageURL string
@@ -38,7 +34,7 @@ func (b *Book) Dir() string {
 	return filepath.Join(utils.NormalizeFilename(author), utils.NormalizeFilename(b.Title))
 }
 
-func GetLibrary(c *auth.Client) (*Library, error) {
+func GetLibrary(c *auth.Client) ([]*Book, error) {
 	page, err := getLibraryPage(c, "/lib")
 	if err != nil {
 		return nil, err
@@ -66,9 +62,7 @@ outer:
 		}
 	}
 
-	return &Library{
-		Books: books,
-	}, nil
+	return books, nil
 }
 
 var nSaved int = 0

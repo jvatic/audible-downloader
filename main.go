@@ -113,13 +113,22 @@ func DownloadLibrary(c *auth.Client) error {
 	}
 	fmt.Printf("Activation Bytes: %s\n", string(activationBytes))
 
-	l, err := audible.GetLibrary(c)
+	books, err := audible.GetLibrary(c)
 	if err != nil {
 		return fmt.Errorf("Error reading library: %s\n", err)
 	}
 
+	books, err = GetNewBooks(books)
+	if err != nil {
+		return fmt.Errorf("Error filtering library: %s\n", err)
+	}
+
+	if strings.ToLower(Prompt(fmt.Sprintf("Download %d new books from your Audible library? (yes/no)", len(books)), true)) != "yes" {
+		return fmt.Errorf("download aborted")
+	}
+
 	pbgroup := mpb.New()
-	mainBar := pbgroup.AddBar(int64(len(l.Books)),
+	mainBar := pbgroup.AddBar(int64(len(books)),
 		mpb.BarPriority(0),
 		mpb.PrependDecorators(
 			decor.Name("Books", decor.WCSyncSpaceR),
@@ -139,7 +148,7 @@ func DownloadLibrary(c *auth.Client) error {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(l.Books))
+	wg.Add(len(books))
 
 	client := &http.Client{
 		Jar: c.Jar,
@@ -248,7 +257,7 @@ func DownloadLibrary(c *auth.Client) error {
 	}
 
 	dlm.Start()
-	for _, book := range l.Books {
+	for _, book := range books {
 		go downloadBook(book)
 	}
 
@@ -263,4 +272,28 @@ func DownloadLibrary(c *auth.Client) error {
 	errsMtx.Unlock()
 
 	return nil
+}
+
+func GetNewBooks(books []*audible.Book) ([]*audible.Book, error) {
+	newBooks := make([]*audible.Book, 0, len(books))
+	for _, b := range books {
+		dir := b.Dir()
+		fi, err := os.Lstat(dir)
+		if err == nil && fi.IsDir() {
+			// book's dir exists, check if it has an mp4
+			m, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
+			if err != nil {
+				return nil, err
+			}
+			if len(m) > 0 {
+				// there's at least one mp4 in the book's dir
+				// assume the book has been downloaded
+				continue
+			}
+		}
+
+		// the book is assumed to need downloading
+		newBooks = append(newBooks, b)
+	}
+	return newBooks, nil
 }
