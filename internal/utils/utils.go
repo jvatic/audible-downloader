@@ -27,7 +27,14 @@ func SwapFileExt(path string, ext string) string {
 	return fmt.Sprintf("%s%s", strings.TrimSuffix(path, oldExt), ext)
 }
 
-func NormalizeFilename(title string) string {
-	re := regexp.MustCompile("[^-_.a-zA-Z0-9 ]")
-	return re.ReplaceAllString(title, "")
+var normalizeFilenameRegex = regexp.MustCompile("[^-_.a-zA-Z0-9 ]")
+
+func NormalizeFilename(name string) string {
+	name = normalizeFilenameRegex.ReplaceAllString(name, "")
+	if len(name) > 255 {
+		// make sure filename is an acceptable length
+		// 255 is a common limit
+		return name[:255]
+	}
+	return name
 }

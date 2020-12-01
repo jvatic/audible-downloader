@@ -219,7 +219,7 @@ func (dl *Download) detectFilename() (string, error) {
 	if fn, ok := utils.ParseHeaderLabels(resp.Header.Get("Content-Disposition"))["filename"]; ok {
 		return utils.NormalizeFilename(fn), nil
 	}
-	return utils.NormalizeFilename(filepath.Base(dl.url)), nil
+	return utils.NormalizeFilename(filepath.Base(resp.Request.URL.Path)), nil
 }
 
 type fileWriter struct {

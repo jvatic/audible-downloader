@@ -2,11 +2,13 @@ package audible
 
 import (
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/jvatic/audible-downloader/audible/auth"
+	"github.com/jvatic/audible-downloader/internal/utils"
 	"golang.org/x/net/html"
 )
 
@@ -27,6 +29,13 @@ type Book struct {
 	DownloadURLs map[string]string
 	ThumbURL     string
 	DetailURL    string
+}
+
+func (b *Book) Dir() string {
+	// only include the first full name listed in the author field
+	// trim any additional names and suffixes
+	author := strings.Split(b.Author, ",")[0]
+	return filepath.Join(utils.NormalizeFilename(author), utils.NormalizeFilename(b.Title))
 }
 
 func GetLibrary(c *auth.Client) (*Library, error) {

@@ -7,9 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,11 +106,6 @@ func SecurePrompt(msg string, required bool) string {
 	return ""
 }
 
-func NormalizeFilename(title string) string {
-	re := regexp.MustCompile("[^-_.a-zA-Z0-9 ]")
-	return re.ReplaceAllString(title, "")
-}
-
 func DownloadLibrary(c *auth.Client) error {
 	activationBytes, err := c.GetActivationBytes()
 	if err != nil {
@@ -166,7 +159,7 @@ func DownloadLibrary(c *auth.Client) error {
 		defer wg.Done()
 		defer mainBar.Increment()
 
-		dir := path.Join(NormalizeFilename(book.Author), NormalizeFilename(book.Title))
+		dir := book.Dir()
 		os.MkdirAll(dir, 0755)
 
 		var bookwg sync.WaitGroup
