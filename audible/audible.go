@@ -19,8 +19,8 @@ type Page struct {
 
 type Book struct {
 	Title        string
-	Author       string
-	Narrator     string
+	Authors      []string
+	Narrators    []string
 	Duration     time.Duration
 	DownloadURLs map[string]string
 	ThumbURL     string
@@ -28,10 +28,17 @@ type Book struct {
 }
 
 func (b *Book) Dir() string {
-	// only include the first full name listed in the author field
-	// trim any additional names and suffixes
-	author := strings.Split(b.Author, ",")[0]
-	return filepath.Join(utils.NormalizeFilename(author), utils.NormalizeFilename(b.Title))
+	dirName := ""
+	for i, name := range b.Authors {
+		if i > 0 {
+			dirName += ", "
+		}
+		dirName += utils.NormalizeFilename(name)
+	}
+	if dirName == "" {
+		dirName = "Unknown Author"
+	}
+	return filepath.Join(dirName, utils.NormalizeFilename(b.Title))
 }
 
 func GetLibrary(c *auth.Client) ([]*Book, error) {
@@ -103,15 +110,19 @@ func getLibraryPage(c *auth.Client, pageURL string) (*Page, error) {
 		book.Title = parseTitle(row)
 
 		if node := htmlquery.FindOne(row, "//li[contains(@class, 'authorLabel')]"); node != nil {
-			if a := htmlquery.FindOne(node, "//a"); a != nil {
-				book.Author = strings.TrimSpace(htmlquery.InnerText(a))
+			authors := []string{}
+			for _, a := range htmlquery.Find(node, "//a") {
+				authors = append(authors, strings.TrimSpace(htmlquery.InnerText(a)))
 			}
+			book.Authors = authors
 		}
 
 		if node := htmlquery.FindOne(row, "//li[contains(@class, 'narratorLabel')]"); node != nil {
-			if a := htmlquery.FindOne(node, "//a"); a != nil {
-				book.Narrator = strings.TrimSpace(htmlquery.InnerText(a))
+			narrators := []string{}
+			for _, a := range htmlquery.Find(node, "//a") {
+				narrators = append(narrators, strings.TrimSpace(htmlquery.InnerText(a)))
 			}
+			book.Narrators = narrators
 		}
 
 		book.DownloadURLs = make(map[string]string)
