@@ -1,11 +1,26 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+// ContextWithCancelChan returns a new context derived from the given parent
+// that is canceled when the given chan receives
+func ContextWithCancelChan(parent context.Context, done <-chan struct{}) context.Context {
+	ctx, cancel := context.WithCancel(parent)
+	go func() {
+		select {
+		case <-done:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx
+}
 
 func ParseHeaderLabels(h string) map[string]string {
 	labels := map[string]string{}
