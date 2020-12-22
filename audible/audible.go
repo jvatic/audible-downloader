@@ -41,6 +41,12 @@ func OptionCaptcha(getCaptcha func(imgURL string) string) Option {
 	}
 }
 
+func OptionRadioPrompt(getChoice func(msg string, opts []string) int) Option {
+	return func(c *Client) {
+		c.getChoice = getChoice
+	}
+}
+
 func OptionLang(lang string) Option {
 	return func(c *Client) {
 		c.lang = lang
@@ -63,6 +69,7 @@ type Client struct {
 	playerID       string
 	getAuthCode    func() string
 	getCaptcha     func(imgURL string) string
+	getChoice      func(msg string, opts []string) int
 	lastURL        *url.URL
 }
 

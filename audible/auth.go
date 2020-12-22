@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ func (c *Client) Authenticate(ctx context.Context) error {
 		s.getSigninPage,
 		s.doSignin,
 		s.handleCaptcha,
+		s.handleOTPSelection,
 		s.handleOTP,
 		s.confirmAuth,
 	}
@@ -406,6 +408,64 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 	return nil
 }
 
+func (s *authState) handleOTPSelection(ctx context.Context) error {
+	// Pick OTP method if prompted
+	for {
+		if form := htmlquery.FindOne(s.doc, "//form[@id = 'auth-select-device-form']"); form != nil {
+			if msg := s.getMessageBoxString(); msg != "" {
+				fmt.Println(msg)
+			}
+			s.doOTPSelectionForm(ctx, form)
+		} else {
+			return nil
+		}
+	}
+}
+
+type otpOption struct {
+	label string
+	name  string
+	value string
+}
+
+func (s *authState) doOTPSelectionForm(ctx context.Context, form *html.Node) error {
+	actionURL, data := parseForm(form)
+
+	var options []*otpOption
+	var optionLabels []string
+	for _, node := range htmlquery.Find(form, "//fieldset/div") {
+		input := htmlquery.FindOne(node, "//input[@type='radio']")
+		if input == nil {
+			continue
+		}
+		labelText := strings.TrimSpace(htmlquery.InnerText(node))
+		options = append(options, &otpOption{
+			label: labelText,
+			name:  htmlquery.SelectAttr(input, "name"),
+			value: htmlquery.SelectAttr(input, "value"),
+		})
+		optionLabels = append(optionLabels, labelText)
+	}
+	if len(options) == 0 {
+		return errors.New("Unable to detect Two-Step verification options")
+	}
+
+	option := options[s.c.getChoice("Choose where to receive the One Time Password (OTP)", optionLabels)]
+	data.Set(option.name, option.value)
+	resp, err := s.submitForm(ctx, actionURL, data)
+	if err != nil {
+		return fmt.Errorf("error choosing otp method: %w", err)
+	}
+	defer resp.Body.Close()
+	doc, err := htmlquery.Parse(resp.Body)
+	if err != nil {
+		return err
+	}
+	s.doc = doc
+	s.lastResponse = resp
+	return nil
+}
+
 func (s *authState) handleOTP(ctx context.Context) error {
 	// Submit OTP code if promted for one
 	for {
@@ -422,7 +482,7 @@ func (s *authState) handleOTP(ctx context.Context) error {
 
 func (s *authState) doOTPForm(ctx context.Context, form *html.Node) error {
 	actionURL, data := parseForm(form)
-	if input := htmlquery.FindOne(s.doc, "//input[@name = 'otpCode']"); input != nil {
+	if input := htmlquery.FindOne(form, "//input[@name = 'otpCode']"); input != nil {
 		// OTP enabled
 		if s.c.getAuthCode == nil {
 			return fmt.Errorf("OTP enabled on account and OptionAuthCode not given")
@@ -430,7 +490,7 @@ func (s *authState) doOTPForm(ctx context.Context, form *html.Node) error {
 		data.Set("otpCode", s.c.getAuthCode())
 		resp, err := s.submitForm(ctx, actionURL, data)
 		if err != nil {
-			return fmt.Errorf("error posting auth code: %s", err)
+			return fmt.Errorf("error posting auth code: %w", err)
 		}
 		defer resp.Body.Close()
 		doc, err := htmlquery.Parse(resp.Body)

@@ -24,6 +24,24 @@ func HasRequiredOption(opts []Option) bool {
 	return false
 }
 
+func Radio(msg string, choices []string, opts ...Option) int {
+	for {
+		for i, str := range choices {
+			fmt.Printf("%d) %s\n", i+1, str)
+		}
+		if n := Int(fmt.Sprintf("%s [1-%d, default: 1]", msg, len(choices))); n != 0 {
+			if n > len(choices) || n < 1 {
+				fmt.Printf("Invalid choice, please enter a number for the desired option [1-%d].\n", len(choices))
+				continue
+			}
+			return n - 1
+		} else {
+			// no option given, using default
+			return 0
+		}
+	}
+}
+
 func String(msg string, opts ...Option) string {
 	required := HasRequiredOption(opts)
 	reader := bufio.NewReader(os.Stdin)

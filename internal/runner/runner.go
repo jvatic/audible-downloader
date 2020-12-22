@@ -32,11 +32,20 @@ func Run(runCtx context.Context) error {
 
 	username := prompt.String("Audible Username", prompt.Required)
 	password := prompt.Password("Audible Password", prompt.Required)
-	c, err := audible.NewClient(audible.OptionBaseURL(u.String()), audible.OptionUsername(username), audible.OptionPassword(password), audible.OptionCaptcha(func(imgURL string) string {
-		return prompt.String(fmt.Sprintf("%s\nPlease enter captcha from above URL", imgURL), prompt.Required)
-	}), audible.OptionAuthCode(func() string {
-		return prompt.String("Auth Code", prompt.Required)
-	}))
+	c, err := audible.NewClient(
+		audible.OptionBaseURL(u.String()),
+		audible.OptionUsername(username),
+		audible.OptionPassword(password),
+		audible.OptionCaptcha(func(imgURL string) string {
+			return prompt.String(fmt.Sprintf("%s\nPlease enter captcha from above URL", imgURL), prompt.Required)
+		}),
+		audible.OptionAuthCode(func() string {
+			return prompt.String("Auth Code", prompt.Required)
+		}),
+		audible.OptionRadioPrompt(func(msg string, opts []string) int {
+			return prompt.Radio(msg, opts)
+		}),
+	)
 	if err != nil {
 		return fmt.Errorf("Error creating client: %w\n", err)
 	}
@@ -53,24 +62,18 @@ func Run(runCtx context.Context) error {
 }
 
 func RegionPrompt() audible.Region {
-	for i, l := range audible.Regions {
-		fmt.Printf("%d) %s\n", i+1, l.Name)
+	choices := make([]string, len(audible.Regions))
+	for i, r := range audible.Regions {
+		choices[i] = r.Name
 	}
-	r := audible.Regions[0]
-	for {
-		if n := prompt.Int(fmt.Sprintf("Pick region (1-%d, default: 1)", len(audible.Regions))); n != 0 {
-			if n > len(audible.Regions) || n < 1 {
-				fmt.Println("Invalid choice, please enter a number for the options listed above.")
-				continue
-			}
-			r = audible.Regions[n-1]
-			break
-		} else {
-			// no option given, using default
-			break
-		}
+	ri := prompt.Radio(
+		"Pick region",
+		choices,
+	)
+	if ri < 0 {
+		ri = 0
 	}
-	return r
+	return audible.Regions[ri]
 }
 
 func DownloadLibrary(ctx context.Context, c *audible.Client) error {
