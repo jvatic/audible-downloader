@@ -16,6 +16,7 @@ import (
 
 	"github.com/antchfx/htmlquery"
 	"github.com/jvatic/audible-downloader/internal/utils"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 )
 
@@ -47,6 +48,8 @@ func (c *Client) Authenticate(ctx context.Context) error {
 }
 
 func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
+	log.Debug("GetActivationBytes")
+
 	query := url.Values{
 		"ipRedirectOverride": []string{"true"},
 		"playerType":         []string{"software"},
@@ -266,6 +269,8 @@ func (s *authState) getMessageBoxString() string {
 }
 
 func (s *authState) getLandingPage(ctx context.Context) error {
+	log.Debug("getLandingPage")
+
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
 		"GET", "https://www.audible.ca/en_CA/?ipRedirectOverride=true", nil)
@@ -284,6 +289,8 @@ func (s *authState) getLandingPage(ctx context.Context) error {
 }
 
 func (s *authState) overrideIPRedirect(ctx context.Context) error {
+	log.Debug("overrideIPRedirect")
+
 	if a := htmlquery.FindOne(s.doc, "//a[contains(@href, 'RedirectOverride=true')]"); a != nil {
 		req, err := http.NewRequestWithContext(
 			utils.ContextWithCancelChan(context.Background(), ctx.Done()),
@@ -304,6 +311,8 @@ func (s *authState) overrideIPRedirect(ctx context.Context) error {
 }
 
 func (s *authState) getSigninPage(ctx context.Context) error {
+	log.Debug("getSigninPage")
+
 	// find sign in URL
 	var signinURL string
 	if a := htmlquery.FindOne(s.doc, "//a[contains(@class, 'ui-it-sign-in-link')]"); a != nil {
@@ -331,6 +340,8 @@ func (s *authState) getSigninPage(ctx context.Context) error {
 }
 
 func (s *authState) doSignin(ctx context.Context) error {
+	log.Debug("doSignin")
+
 	// Sign in
 	var actionURL string
 	var data url.Values
@@ -361,6 +372,8 @@ func (s *authState) doSignin(ctx context.Context) error {
 }
 
 func (s *authState) handleCaptcha(ctx context.Context) error {
+	log.Debug("handleCaptcha")
+
 	for {
 		if img := htmlquery.FindOne(s.doc, "//img[@id = 'auth-captcha-image']"); img != nil {
 			if msg := s.getMessageBoxString(); msg != "" {
@@ -374,6 +387,8 @@ func (s *authState) handleCaptcha(ctx context.Context) error {
 }
 
 func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
+	log.Debug("doCaptchaForm")
+
 	var captcha string
 	if s.c.getCaptcha != nil {
 		captcha = s.c.getCaptcha(htmlquery.SelectAttr(img, "src"))
@@ -409,6 +424,8 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 }
 
 func (s *authState) handleOTPSelection(ctx context.Context) error {
+	log.Debug("handleOTPSelection")
+
 	// Pick OTP method if prompted
 	for {
 		if form := htmlquery.FindOne(s.doc, "//form[@id = 'auth-select-device-form']"); form != nil {
@@ -429,6 +446,8 @@ type otpOption struct {
 }
 
 func (s *authState) doOTPSelectionForm(ctx context.Context, form *html.Node) error {
+	log.Debug("doOTPSelectionForm")
+
 	actionURL, data := parseForm(form)
 
 	var options []*otpOption
@@ -467,6 +486,8 @@ func (s *authState) doOTPSelectionForm(ctx context.Context, form *html.Node) err
 }
 
 func (s *authState) handleOTP(ctx context.Context) error {
+	log.Debug("handleOTP")
+
 	// Submit OTP code if promted for one
 	for {
 		if form := htmlquery.FindOne(s.doc, "//form[@id = 'auth-mfa-form']"); form != nil {
@@ -481,6 +502,8 @@ func (s *authState) handleOTP(ctx context.Context) error {
 }
 
 func (s *authState) doOTPForm(ctx context.Context, form *html.Node) error {
+	log.Debug("doOTPForm")
+
 	actionURL, data := parseForm(form)
 	if input := htmlquery.FindOne(form, "//input[@name = 'otpCode']"); input != nil {
 		// OTP enabled
@@ -504,6 +527,8 @@ func (s *authState) doOTPForm(ctx context.Context, form *html.Node) error {
 }
 
 func (s *authState) confirmAuth(ctx context.Context) error {
+	log.Debug("confirmAuth")
+
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
 		"GET", "/lib", nil)

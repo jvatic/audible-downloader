@@ -11,6 +11,9 @@ github.com/antchfx/xpath
 github.com/golang/groupcache/lru
 # github.com/mattn/go-runewidth v0.0.9
 github.com/mattn/go-runewidth
+# github.com/sirupsen/logrus v1.7.0
+## explicit
+github.com/sirupsen/logrus
 # github.com/vbauerster/mpb/v5 v5.3.0
 ## explicit
 github.com/vbauerster/mpb/v5

@@ -1,12 +1,17 @@
 package audible
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type roundTripper struct {
@@ -52,22 +57,58 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// send captured cookies with request
 	for _, c := range rt.jar.Cookies(req.URL) {
+		log.Tracef("AddCookie(%s): %v", req.URL, c)
 		req.AddCookie(c)
 	}
+
+	log.Debugf("%s %s", req.Method, req.URL)
+	log.TraceFn(logHeader(req.Header, "User-Agent"))
 
 	resp, err := t.RoundTrip(req)
 	if err != nil {
 		return resp, err
 	}
 
+	log.Debugf("-> %s: %s", req.URL, resp.Status)
+	log.TraceFn(logHeader(resp.Header, "Content-Type"))
+
 	// capture response cookies
 	rt.jar.SetCookies(resp.Request.URL, resp.Cookies())
 	if strings.Contains(resp.Request.URL.Host, "amazon.") {
 		// make sure amazon.com has cookies
 		if u, err := url.Parse("https://amazon.com"); err == nil {
-			rt.jar.SetCookies(u, resp.Cookies())
+			cookies := resp.Cookies()
+			log.Tracef("SetCookies(%s): %v", u, cookies)
+			rt.jar.SetCookies(u, cookies)
 		}
 	}
 
+	log.TraceFn(logResponseBody(resp))
+
 	return resp, nil
+}
+
+type readCloser struct {
+	io.Reader
+}
+
+func (b *readCloser) Close() error {
+	return nil
+}
+
+func logResponseBody(resp *http.Response) log.LogFunction {
+	return func() []interface{} {
+		var buf bytes.Buffer
+		io.Copy(&buf, resp.Body)
+		body := buf.String()
+		// allow reading the body again
+		resp.Body = &readCloser{Reader: &buf}
+		return []interface{}{body}
+	}
+}
+
+func logHeader(h http.Header, name string) log.LogFunction {
+	return func() []interface{} {
+		return []interface{}{fmt.Sprintf("%s: %s", name, h.Get(name))}
+	}
 }
