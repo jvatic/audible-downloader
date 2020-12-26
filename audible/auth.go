@@ -26,6 +26,11 @@ func (c *Client) Authenticate(ctx context.Context) error {
 
 	s := &authState{c: c}
 
+	// check if we're still authenticated before signing in again
+	if err := s.confirmAuth(ctx); err == nil {
+		return nil
+	}
+
 	steps := []authStep{
 		s.getLandingPage,
 		s.overrideIPRedirect,
@@ -79,8 +84,6 @@ func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
 
 	playerToken := c.lastURL.Query().Get("playerToken")
 	if playerToken == "" {
-		fmt.Println(c.lastURL.Query())
-		fmt.Println(c.lastURL.String())
 		return nil, fmt.Errorf("Unable to get player token")
 	}
 
@@ -231,8 +234,13 @@ func (s *authState) PageURLString() string {
 	return ""
 }
 
-func parseForm(form *html.Node) (string, url.Values) {
-	actionURL := htmlquery.SelectAttr(form, "action")
+func (s *authState) parseForm(form *html.Node) (string, url.Values) {
+	actionURL := strings.TrimSpace(htmlquery.SelectAttr(form, "action"))
+	if u, err := url.Parse(actionURL); err == nil {
+		if s.lastResponse != nil {
+			actionURL = s.lastResponse.Request.URL.ResolveReference(u).String()
+		}
+	}
 	data := url.Values{}
 	for _, input := range htmlquery.Find(form, "//input") {
 		data.Set(htmlquery.SelectAttr(input, "name"), htmlquery.SelectAttr(input, "value"))
@@ -346,7 +354,7 @@ func (s *authState) doSignin(ctx context.Context) error {
 	var actionURL string
 	var data url.Values
 	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
-		actionURL, data = parseForm(form)
+		actionURL, data = s.parseForm(form)
 	} else {
 		return fmt.Errorf("Unable to parse form action")
 	}
@@ -366,7 +374,7 @@ func (s *authState) doSignin(ctx context.Context) error {
 	s.doc = doc
 	s.lastResponse = resp
 	if msg := s.getMessageBoxString(); msg != "" {
-		fmt.Println(msg)
+		log.Error(msg)
 	}
 	return nil
 }
@@ -377,7 +385,7 @@ func (s *authState) handleCaptcha(ctx context.Context) error {
 	for {
 		if img := htmlquery.FindOne(s.doc, "//img[@id = 'auth-captcha-image']"); img != nil {
 			if msg := s.getMessageBoxString(); msg != "" {
-				fmt.Println(msg)
+				log.Error(msg)
 			}
 			s.doCaptchaForm(ctx, img)
 		} else {
@@ -399,7 +407,7 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 	var actionURL string
 	var data url.Values
 	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
-		actionURL, data = parseForm(form)
+		actionURL, data = s.parseForm(form)
 	} else {
 		return fmt.Errorf("Unable to parse form action")
 	}
@@ -430,7 +438,7 @@ func (s *authState) handleOTPSelection(ctx context.Context) error {
 	for {
 		if form := htmlquery.FindOne(s.doc, "//form[@id = 'auth-select-device-form']"); form != nil {
 			if msg := s.getMessageBoxString(); msg != "" {
-				fmt.Println(msg)
+				log.Error(msg)
 			}
 			s.doOTPSelectionForm(ctx, form)
 		} else {
@@ -448,7 +456,7 @@ type otpOption struct {
 func (s *authState) doOTPSelectionForm(ctx context.Context, form *html.Node) error {
 	log.Debug("doOTPSelectionForm")
 
-	actionURL, data := parseForm(form)
+	actionURL, data := s.parseForm(form)
 
 	var options []*otpOption
 	var optionLabels []string
@@ -492,7 +500,7 @@ func (s *authState) handleOTP(ctx context.Context) error {
 	for {
 		if form := htmlquery.FindOne(s.doc, "//form[@id = 'auth-mfa-form']"); form != nil {
 			if msg := s.getMessageBoxString(); msg != "" {
-				fmt.Println(msg)
+				log.Error(msg)
 			}
 			s.doOTPForm(ctx, form)
 		} else {
@@ -504,7 +512,7 @@ func (s *authState) handleOTP(ctx context.Context) error {
 func (s *authState) doOTPForm(ctx context.Context, form *html.Node) error {
 	log.Debug("doOTPForm")
 
-	actionURL, data := parseForm(form)
+	actionURL, data := s.parseForm(form)
 	if input := htmlquery.FindOne(form, "//input[@name = 'otpCode']"); input != nil {
 		// OTP enabled
 		if s.c.getAuthCode == nil {

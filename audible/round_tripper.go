@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
@@ -16,7 +15,7 @@ import (
 
 type roundTripper struct {
 	baseURL *url.URL
-	jar     *cookiejar.Jar
+	jar     http.CookieJar
 }
 
 const admUserAgent = "Audible Download Manager"

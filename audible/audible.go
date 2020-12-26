@@ -6,6 +6,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -35,6 +36,12 @@ func OptionAuthCode(getAuthCode func() string) Option {
 	}
 }
 
+func OptionCookieJar(jar http.CookieJar) Option {
+	return func(c *Client) {
+		c.jar = jar
+	}
+}
+
 func OptionCaptcha(getCaptcha func(imgURL string) string) Option {
 	return func(c *Client) {
 		c.getCaptcha = getCaptcha
@@ -47,12 +54,6 @@ func OptionPromptChoice(getChoice func(msg string, opts []string) int) Option {
 	}
 }
 
-func OptionLang(lang string) Option {
-	return func(c *Client) {
-		c.lang = lang
-	}
-}
-
 func OptionPlayerID(playerID string) Option {
 	return func(c *Client) {
 		c.playerID = playerID
@@ -61,7 +62,7 @@ func OptionPlayerID(playerID string) Option {
 
 type Client struct {
 	*http.Client
-	lang           string
+	jar            http.CookieJar
 	baseURL        string
 	baseLicenseURL string
 	username       string
@@ -75,19 +76,21 @@ type Client struct {
 
 func NewClient(opts ...Option) (*Client, error) {
 	c := &Client{
-		lang:           "us",
 		playerID:       generatePlayerID(),
 		baseLicenseURL: "https://www.audible.com",
 	}
 
 	// setup http client with cookie jar
-	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-	if err != nil {
-		return nil, err
+	if c.jar == nil {
+		jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+		if err != nil {
+			return nil, err
+		}
+		c.jar = jar
 	}
 
 	c.Client = &http.Client{
-		Jar: jar,
+		Jar: c.jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) > 10 {
 				return http.ErrUseLastResponse
@@ -105,14 +108,14 @@ func NewClient(opts ...Option) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Valid BaseURL is required")
 	}
-	c.Client.Transport = &roundTripper{baseURL: u, jar: jar}
+	c.Client.Transport = &roundTripper{baseURL: u, jar: c.jar}
 
 	if c.username == "" {
-		return nil, fmt.Errorf("Username is required")
+		log.Warn("Username is empty")
 	}
 
 	if c.password == "" {
-		return nil, fmt.Errorf("Password is required")
+		log.Warn("Password is empty")
 	}
 
 	return c, nil
