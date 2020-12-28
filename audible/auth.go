@@ -26,12 +26,27 @@ func (c *Client) Authenticate(ctx context.Context) error {
 
 	s := &authState{c: c}
 
-	// check if we're still authenticated before signing in again
-	if err := s.confirmAuth(ctx); err == nil {
+	// check if we're already authenticated via a cookie
+	steps := []authStep{
+		s.getLandingPage,
+		s.overrideIPRedirect,
+		s.confirmAuth,
+	}
+
+	var err error
+	for _, step := range steps {
+		if err = step(ctx); err != nil {
+			break
+		}
+	}
+
+	if err == nil {
+		// we're authenticated
 		return nil
 	}
 
-	steps := []authStep{
+	// we're not authenticated, so run through the full signin process
+	steps = []authStep{
 		s.getLandingPage,
 		s.overrideIPRedirect,
 		s.getSigninPage,
@@ -64,7 +79,7 @@ func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
 		"playerManufacturer": []string{"Audible"},
 		"serial":             []string{""},
 	}
-	u, err := url.Parse(c.baseURL)
+	u, err := url.Parse(c.rawBaseURL)
 	if err != nil {
 		return nil, err
 	}

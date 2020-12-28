@@ -3,18 +3,17 @@ package audible
 import (
 	"fmt"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 
+	"github.com/jvatic/audible-downloader/internal/cookiejar"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/publicsuffix"
 )
 
 type Option func(*Client)
 
 func OptionBaseURL(baseURL string) Option {
 	return func(c *Client) {
-		c.baseURL = baseURL
+		c.rawBaseURL = baseURL
 	}
 }
 
@@ -33,12 +32,6 @@ func OptionPassword(password string) Option {
 func OptionAuthCode(getAuthCode func() string) Option {
 	return func(c *Client) {
 		c.getAuthCode = getAuthCode
-	}
-}
-
-func OptionCookieJar(jar http.CookieJar) Option {
-	return func(c *Client) {
-		c.jar = jar
 	}
 }
 
@@ -63,7 +56,8 @@ func OptionPlayerID(playerID string) Option {
 type Client struct {
 	*http.Client
 	jar            http.CookieJar
-	baseURL        string
+	rawBaseURL     string
+	baseURL        *url.URL
 	baseLicenseURL string
 	username       string
 	password       string
@@ -80,14 +74,12 @@ func NewClient(opts ...Option) (*Client, error) {
 		baseLicenseURL: "https://www.audible.com",
 	}
 
-	// setup http client with cookie jar
-	if c.jar == nil {
-		jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-		if err != nil {
-			return nil, err
-		}
-		c.jar = jar
+	// persistent cookiejar that wraps net/http/cookiejar.Jar
+	jar, err := cookiejar.NewJar()
+	if err != nil {
+		return nil, err
 	}
+	c.jar = jar
 
 	c.Client = &http.Client{
 		Jar: c.jar,
@@ -95,6 +87,9 @@ func NewClient(opts ...Option) (*Client, error) {
 			if len(via) > 10 {
 				return http.ErrUseLastResponse
 			}
+			log.TraceFn(func() []interface{} {
+				return []interface{}{fmt.Sprintf("Redirect: %s", req.URL)}
+			})
 			c.lastURL = req.URL
 			return nil
 		},
@@ -104,11 +99,12 @@ func NewClient(opts ...Option) (*Client, error) {
 		opt(c)
 	}
 
-	u, err := url.Parse(c.baseURL)
+	u, err := url.Parse(c.rawBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("Valid BaseURL is required")
 	}
-	c.Client.Transport = &roundTripper{baseURL: u, jar: c.jar}
+	c.baseURL = u
+	c.Client.Transport = &roundTripper{}
 
 	if c.username == "" {
 		log.Warn("Username is empty")
@@ -119,4 +115,14 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	return c, nil
+}
+
+func (c *Client) Do(req *http.Request) (*http.Response, error) {
+	if !req.URL.IsAbs() {
+		// Allow client to make requests relative to baseURL
+		req.URL.Scheme = c.baseURL.Scheme
+		req.URL.Host = c.baseURL.Host
+	}
+
+	return c.Client.Do(req)
 }

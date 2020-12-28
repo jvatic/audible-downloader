@@ -4,29 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
+	"mime"
 	"net/http"
-	"net/url"
-	"strings"
-	"time"
+	"os"
+	"path/filepath"
+	"sync"
 
+	"github.com/jvatic/audible-downloader/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 
 type roundTripper struct {
-	baseURL *url.URL
-	jar     http.CookieJar
 }
 
 const admUserAgent = "Audible Download Manager"
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if !req.URL.IsAbs() {
-		// Allow client to make requests relative to baseURL
-		req.URL.Scheme = rt.baseURL.Scheme
-		req.URL.Host = rt.baseURL.Host
-		req.Header.Set("Host", req.URL.Host)
-	}
 	if req.Header.Get("User-Agent") != admUserAgent {
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:83.0) Gecko/20100101 Firefox/83.0")
 	}
@@ -41,47 +34,16 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("DNT", "1")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
 
-	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       4 * time.Minute,
-		TLSHandshakeTimeout:   2 * time.Minute,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	// send captured cookies with request
-	for _, c := range rt.jar.Cookies(req.URL) {
-		log.Tracef("AddCookie(%s): %v", req.URL, c)
-		req.AddCookie(c)
-	}
-
 	log.Debugf("%s %s", req.Method, req.URL)
 	log.TraceFn(logHeader(req.Header, "User-Agent"))
 
-	resp, err := t.RoundTrip(req)
+	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		return resp, err
 	}
 
-	log.Debugf("-> %s: %s", req.URL, resp.Status)
+	log.Debugf("-> %s: %s", resp.Request.URL, resp.Status)
 	log.TraceFn(logHeader(resp.Header, "Content-Type"))
-
-	// capture response cookies
-	rt.jar.SetCookies(resp.Request.URL, resp.Cookies())
-	if strings.Contains(resp.Request.URL.Host, "amazon.") {
-		// make sure amazon.com has cookies
-		if u, err := url.Parse("https://amazon.com"); err == nil {
-			cookies := resp.Cookies()
-			log.Tracef("SetCookies(%s): %v", u, cookies)
-			rt.jar.SetCookies(u, cookies)
-		}
-	}
-
 	log.TraceFn(logResponseBody(resp))
 
 	return resp, nil
@@ -95,14 +57,34 @@ func (b *readCloser) Close() error {
 	return nil
 }
 
+var nBody int
+var nBodyMtx sync.Mutex
+
 func logResponseBody(resp *http.Response) log.LogFunction {
 	return func() []interface{} {
+		nBodyMtx.Lock()
+		defer nBodyMtx.Unlock()
+		nBody++
 		var buf bytes.Buffer
 		io.Copy(&buf, resp.Body)
-		body := buf.String()
 		// allow reading the body again
 		resp.Body = &readCloser{Reader: &buf}
-		return []interface{}{body}
+		t, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		if err != nil {
+			t = "text/plain"
+		}
+		exts, err := mime.ExtensionsByType(t)
+		if err != nil {
+			exts = []string{".txt"}
+		}
+		p := filepath.Join(config.Dir(), "debug", fmt.Sprintf("%02d%s", nBody, exts[0]))
+		os.MkdirAll(filepath.Dir(p), 0755)
+		file, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0755)
+		if err != nil {
+			return []interface{}{fmt.Sprintf("error saving response body to %q: %s", p, err)}
+		}
+		io.Copy(file, bytes.NewReader(buf.Bytes()))
+		return []interface{}{fmt.Sprintf("response body saved to %q", p)}
 	}
 }
 
