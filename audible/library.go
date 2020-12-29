@@ -3,15 +3,18 @@ package audible
 import (
 	"context"
 	"fmt"
+	"image"
 	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/jvatic/audible-downloader/internal/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 type Page struct {
@@ -26,6 +29,7 @@ type Book struct {
 	Duration     time.Duration
 	DownloadURLs map[string]string
 	ThumbURL     string
+	ThumbImage   image.Image `json:"-"`
 	AudibleURL   string
 }
 
@@ -95,6 +99,27 @@ outer:
 			return nil, err
 		}
 	}
+
+	var wg sync.WaitGroup
+	for _, b := range books {
+		wg.Add(1)
+		go func(b *Book) {
+			defer wg.Done()
+			resp, err := c.Get(b.ThumbURL)
+			if err != nil {
+				log.Errorf("error fetching ThumbURL(%s): %s", b.ThumbURL, err)
+				return
+			}
+			defer resp.Body.Close()
+			img, _, err := image.Decode(resp.Body)
+			if err != nil {
+				log.Errorf("error decoding ThumbURL(%s): %s", b.ThumbURL, err)
+				return
+			}
+			b.ThumbImage = img
+		}(b)
+	}
+	wg.Wait()
 
 	return books, nil
 }
