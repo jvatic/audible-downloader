@@ -67,8 +67,8 @@ func (c *Client) Authenticate(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
-	log.Debug("GetActivationBytes")
+func (c *Client) GetPlayerToken(ctx context.Context) (string, error) {
+	log.Debug("GetPlayerToken")
 
 	query := url.Values{
 		"ipRedirectOverride": []string{"true"},
@@ -81,25 +81,38 @@ func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
 	}
 	u, err := url.Parse(c.rawBaseURL)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	u.RawQuery = query.Encode()
 	u.Path = "/player-auth-token"
 	reqCtx := utils.ContextWithCancelChan(context.Background(), ctx.Done())
 	req, err := http.NewRequestWithContext(reqCtx, "GET", u.String(), nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Header.Set("User-Agent", admUserAgent)
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	resp.Body.Close()
 
 	playerToken := c.lastURL.Query().Get("playerToken")
 	if playerToken == "" {
-		return nil, fmt.Errorf("Unable to get player token")
+		return "", fmt.Errorf("Unable to get player token")
+	}
+
+	log.Debugf("PlayerToken: %s", playerToken)
+
+	return playerToken, nil
+}
+
+func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
+	log.Debug("GetActivationBytes")
+
+	playerToken, err := c.GetPlayerToken(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	deregister := func() error {
@@ -119,7 +132,7 @@ func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
 			return err
 		}
 		req.Header.Set("User-Agent", admUserAgent)
-		resp, err = c.Do(req)
+		resp, err := c.Do(req)
 		if err != nil {
 			return err
 		}
@@ -131,23 +144,23 @@ func (c *Client) GetActivationBytes(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	u, err = url.Parse(c.baseLicenseURL)
+	u, err := url.Parse(c.baseLicenseURL)
 	if err != nil {
 		return nil, err
 	}
-	query = url.Values{
+	query := url.Values{
 		"customer_token": []string{playerToken},
 	}
 	u.RawQuery = query.Encode()
 	u.Path = "/license/licenseForCustomerToken"
 
-	reqCtx = utils.ContextWithCancelChan(context.Background(), ctx.Done())
-	req, err = http.NewRequestWithContext(reqCtx, "GET", u.String(), nil)
+	reqCtx := utils.ContextWithCancelChan(context.Background(), ctx.Done())
+	req, err := http.NewRequestWithContext(reqCtx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", admUserAgent)
-	resp, err = c.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
