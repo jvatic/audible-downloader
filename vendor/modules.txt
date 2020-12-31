@@ -34,6 +34,9 @@ github.com/antchfx/htmlquery
 github.com/antchfx/xpath
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
+## explicit
+github.com/dhowden/tag
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
 # github.com/fyne-io/mobile v0.1.2-0.20201127155338-06aeb98410cc
