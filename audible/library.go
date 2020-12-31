@@ -72,6 +72,13 @@ func (b *Book) WriteInfo(w io.Writer) error {
 	return err
 }
 
+// ByTitle implements sort.Interface for []*Book based on the Title field
+type ByTitle []*Book
+
+func (a ByTitle) Len() int           { return len(a) }
+func (a ByTitle) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByTitle) Less(i, j int) bool { return strings.Compare(a[i].Title, a[j].Title) < 0 }
+
 func (c *Client) GetLibrary(ctx context.Context) ([]*Book, error) {
 	page, err := c.getLibraryPage(ctx, "/lib")
 	if err != nil {
