@@ -107,6 +107,18 @@ outer:
 		}
 	}
 
+	// make sure we have exactly one entry per book
+	bookURLs := make(map[string]struct{}, len(books))
+	dedupedBooks := make([]*Book, 0, len(books))
+	for _, b := range books {
+		if _, ok := bookURLs[b.AudibleURL]; ok {
+			continue
+		}
+		bookURLs[b.AudibleURL] = struct{}{}
+		dedupedBooks = append(dedupedBooks, b)
+	}
+	books = dedupedBooks
+
 	var wg sync.WaitGroup
 	for _, b := range books {
 		wg.Add(1)
