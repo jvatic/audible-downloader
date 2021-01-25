@@ -1,3 +1,28 @@
+# fyne.io/fyne v1.4.2
+## explicit
+fyne.io/fyne
+fyne.io/fyne/app
+fyne.io/fyne/canvas
+fyne.io/fyne/container
+fyne.io/fyne/dialog
+fyne.io/fyne/driver/desktop
+fyne.io/fyne/driver/mobile
+fyne.io/fyne/internal
+fyne.io/fyne/internal/app
+fyne.io/fyne/internal/cache
+fyne.io/fyne/internal/driver
+fyne.io/fyne/internal/driver/glfw
+fyne.io/fyne/internal/driver/gomobile
+fyne.io/fyne/internal/painter
+fyne.io/fyne/internal/painter/gl
+fyne.io/fyne/internal/painter/software
+fyne.io/fyne/internal/test
+fyne.io/fyne/internal/widget
+fyne.io/fyne/layout
+fyne.io/fyne/storage
+fyne.io/fyne/test
+fyne.io/fyne/theme
+fyne.io/fyne/widget
 # github.com/VividCortex/ewma v1.1.1
 github.com/VividCortex/ewma
 # github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
@@ -7,13 +32,55 @@ github.com/acarl005/stripansi
 github.com/antchfx/htmlquery
 # github.com/antchfx/xpath v1.1.6
 github.com/antchfx/xpath
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/fsnotify/fsnotify v1.4.9
+github.com/fsnotify/fsnotify
+# github.com/fyne-io/mobile v0.1.2-0.20201127155338-06aeb98410cc
+github.com/fyne-io/mobile/app
+github.com/fyne-io/mobile/app/internal/callfn
+github.com/fyne-io/mobile/event/key
+github.com/fyne-io/mobile/event/lifecycle
+github.com/fyne-io/mobile/event/paint
+github.com/fyne-io/mobile/event/size
+github.com/fyne-io/mobile/event/touch
+github.com/fyne-io/mobile/exp/f32
+github.com/fyne-io/mobile/geom
+github.com/fyne-io/mobile/gl
+github.com/fyne-io/mobile/internal/mobileinit
+# github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7
+github.com/go-gl/gl/v3.1/gles2
+github.com/go-gl/gl/v3.2-core/gl
+# github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200625191551-73d3c3675aa3
+github.com/go-gl/glfw/v3.3/glfw
+github.com/go-gl/glfw/v3.3/glfw/glfw/deps
+github.com/go-gl/glfw/v3.3/glfw/glfw/deps/glad
+github.com/go-gl/glfw/v3.3/glfw/glfw/deps/mingw
+github.com/go-gl/glfw/v3.3/glfw/glfw/deps/vs2008
+github.com/go-gl/glfw/v3.3/glfw/glfw/include/GLFW
+github.com/go-gl/glfw/v3.3/glfw/glfw/src
+# github.com/godbus/dbus/v5 v5.0.3
+github.com/godbus/dbus/v5
+# github.com/goki/freetype v0.0.0-20181231101311-fa8a33aabaff
+github.com/goki/freetype
+github.com/goki/freetype/raster
+github.com/goki/freetype/truetype
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 github.com/golang/groupcache/lru
 # github.com/mattn/go-runewidth v0.0.9
 github.com/mattn/go-runewidth
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/sirupsen/logrus v1.7.0
 ## explicit
 github.com/sirupsen/logrus
+# github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
+github.com/srwiley/oksvg
+# github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
+github.com/srwiley/rasterx
+# github.com/stretchr/testify v1.5.1
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # github.com/vbauerster/mpb/v5 v5.3.0
 ## explicit
 github.com/vbauerster/mpb/v5
@@ -23,6 +90,13 @@ github.com/vbauerster/mpb/v5/internal
 # golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 ## explicit
 golang.org/x/crypto/ssh/terminal
+# golang.org/x/image v0.0.0-20200430140353-33d19683fad8
+golang.org/x/image/colornames
+golang.org/x/image/draw
+golang.org/x/image/font
+golang.org/x/image/math/f64
+golang.org/x/image/math/fixed
+golang.org/x/image/vector
 # golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 ## explicit
 golang.org/x/net/html
@@ -34,6 +108,7 @@ golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+golang.org/x/sys/windows/registry
 # golang.org/x/term v0.0.0-20201117132131-f5c789dd3221
 golang.org/x/term
 # golang.org/x/text v0.3.3
@@ -54,3 +129,5 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
+# gopkg.in/yaml.v2 v2.2.8
+gopkg.in/yaml.v2
