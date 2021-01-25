@@ -128,6 +128,14 @@ func DownloadOptionDetectFilename() DownloadOption {
 	}
 }
 
+// DownloadOptionPreferFilename must be used in conjunction with DownloadOptionDetectFilename
+func DownloadOptionPreferFilename(name, contentType string) DownloadOption {
+	return func(dl *Download) {
+		dl.preferredFilename = name
+		dl.preferredContentType = contentType
+	}
+}
+
 func DownloadOptionURL(url string) DownloadOption {
 	return func(dl *Download) {
 		dl.url = url
@@ -189,6 +197,8 @@ type Download struct {
 	filename             string
 	finalExt             string
 	shouldDetectFilename bool
+	preferredFilename    string
+	preferredContentType string
 	url                  string
 	client               *http.Client
 	progressHook         ProgressFunc
@@ -215,6 +225,12 @@ func (dl *Download) detectFilename() (string, error) {
 
 	// update the url to be at the end of any redirects
 	dl.url = resp.Request.URL.String()
+
+	if dl.preferredFilename != "" && dl.preferredContentType != "" {
+		if resp.Header.Get("Content-Type") == dl.preferredContentType {
+			return utils.NormalizeFilename(dl.preferredFilename), nil
+		}
+	}
 
 	if fn, ok := utils.ParseHeaderLabels(resp.Header.Get("Content-Disposition"))["filename"]; ok {
 		return utils.NormalizeFilename(fn), nil
