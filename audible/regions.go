@@ -5,7 +5,7 @@ type Region struct {
 	TLD  string
 }
 
-var Regions = []Region{
+var Regions = []*Region{
 	{"Australia", "com.au"},
 	{"Canada", "ca"},
 	{"France", "fr"},
