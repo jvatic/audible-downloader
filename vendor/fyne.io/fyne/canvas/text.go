@@ -25,12 +25,20 @@ type Text struct {
 // MinSize returns the minimum size of this text object based on its font size and content.
 // This is normally determined by the render implementation.
 func (t *Text) MinSize() fyne.Size {
+	t.propertyLock.RLock()
+	defer t.propertyLock.RUnlock()
 	return fyne.MeasureText(t.Text, t.TextSize, t.TextStyle)
 }
 
 // SetMinSize has no effect as the smallest size this canvas object can be is based on its font size and content.
 func (t *Text) SetMinSize(size fyne.Size) {
 	// no-op
+}
+
+func (t *Text) SetText(text string) {
+	t.propertyLock.Lock()
+	defer t.propertyLock.Unlock()
+	t.Text = text
 }
 
 // Refresh causes this object to be redrawn in it's current state
