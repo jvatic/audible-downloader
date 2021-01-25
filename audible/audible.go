@@ -41,7 +41,7 @@ func OptionCaptcha(getCaptcha func(imgURL string) string) Option {
 	}
 }
 
-func OptionRadioPrompt(getChoice func(msg string, opts []string) int) Option {
+func OptionPromptChoice(getChoice func(msg string, opts []string) int) Option {
 	return func(c *Client) {
 		c.getChoice = getChoice
 	}
