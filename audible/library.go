@@ -2,12 +2,13 @@ package audible
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"image"
 	"io"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -31,20 +32,16 @@ type Book struct {
 	ThumbURL     string
 	ThumbImage   image.Image `json:"-"`
 	AudibleURL   string
+	LocalPath    string
 }
 
-func (b *Book) Dir() string {
-	dirName := ""
-	for i, name := range b.Authors {
-		if i > 0 {
-			dirName += ", "
-		}
-		dirName += utils.NormalizeFilename(name)
+func (b *Book) ID() string {
+	h := sha1.New()
+	for _, name := range b.Authors {
+		io.WriteString(h, name)
 	}
-	if dirName == "" {
-		dirName = "Unknown Author"
-	}
-	return filepath.Join(dirName, utils.NormalizeFilename(b.Title))
+	io.WriteString(h, b.Title)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func (b *Book) WriteInfo(w io.Writer) error {
