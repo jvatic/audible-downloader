@@ -53,3 +53,10 @@ func NormalizeFilename(name string) string {
 	}
 	return name
 }
+
+func MinInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
