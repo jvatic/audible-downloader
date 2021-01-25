@@ -1,0 +1,97 @@
+package main
+
+import (
+	"context"
+	"sort"
+
+	"fyne.io/fyne"
+	"fyne.io/fyne/layout"
+	"github.com/jvatic/audible-downloader/audible"
+	log "github.com/sirupsen/logrus"
+)
+
+type Controller struct {
+	render chan fyne.CanvasObject
+	done   chan struct{}
+}
+
+func NewController() *Controller {
+	return &Controller{
+		render: make(chan fyne.CanvasObject),
+		done:   make(chan struct{}),
+	}
+}
+
+func (c *Controller) Run(w fyne.Window) {
+	go func() {
+		// render loop
+		for {
+			select {
+			case view := <-c.render:
+				container := fyne.NewContainerWithLayout(
+					layout.NewMaxLayout(),
+					view,
+				)
+				w.SetContent(container)
+			case <-c.done:
+			}
+		}
+	}()
+
+	// main logic
+
+	// {
+	// 	// TODO: remove this block
+	// 	books, err := LoadLibrary()
+	// 	if err == nil {
+	// 		sort.Sort(audible.ByTitle(books))
+	// 		stateCh := NewLibState(&audible.Client{}, []byte{}, books)
+	// 		if err := Library(w, c.render, stateCh); err != nil {
+	// 			ShowFatalErrorDialog(w, err)
+	// 			return
+	// 		}
+	// 	} else {
+	// 		log.Warn(err)
+	// 	}
+	// }
+
+	client, err := SignIn(w, c.render)
+	if err != nil {
+		ShowFatalErrorDialog(w, err)
+		return
+	}
+
+	ctx := context.Background()
+	activationBytes, err := client.GetActivationBytes(ctx)
+	if err != nil {
+		log.Errorf("Error getting activation bytes: %s", err)
+		return
+	}
+	log.Debugf("Activation Bytes: %s\n", string(activationBytes))
+
+	books, err := client.GetLibrary(ctx)
+	if err != nil {
+		log.Errorf("Error reading library: %s\n", err)
+		return
+	}
+	sort.Sort(audible.ByTitle(books))
+	{
+		// TODO: remove this block
+		if err := SaveLibrary(books); err != nil {
+			log.Warn(err)
+		}
+	}
+
+	stateCh := NewLibState(client, activationBytes, books)
+	if err := Library(w, c.render, stateCh); err != nil {
+		ShowFatalErrorDialog(w, err)
+		return
+	}
+
+	// nothing more to do so close window and quit
+	w.Close()
+}
+
+func (c *Controller) Stop() {
+	close(c.done)
+}
