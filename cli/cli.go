@@ -1,9 +1,8 @@
-package runner
+package main
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,37 +12,73 @@ import (
 	"time"
 
 	"github.com/jvatic/audible-downloader/audible"
+	"github.com/jvatic/audible-downloader/internal/common"
+	"github.com/jvatic/audible-downloader/internal/config"
 	"github.com/jvatic/audible-downloader/internal/downloader"
 	"github.com/jvatic/audible-downloader/internal/ffmpeg"
 	"github.com/jvatic/audible-downloader/internal/prompt"
 	"github.com/jvatic/audible-downloader/internal/utils"
+	log "github.com/sirupsen/logrus"
 	mpb "github.com/vbauerster/mpb/v5"
 	"github.com/vbauerster/mpb/v5/decor"
 )
 
-func Run(runCtx context.Context) error {
+func main() {
+	if err := config.Init(); err != nil {
+		log.Fatalf("Error: %s", err)
+	}
+
+	ctx := common.InitShutdownSignals(context.Background())
+
+	cli := &CLI{}
+
+	if err := cli.Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+type CLI struct {
+	DstDir string
+}
+
+func (cli *CLI) Run(runCtx context.Context) error {
 	// Ask user which Audible region/domain to use
 	region := RegionPrompt()
 	u, err := url.Parse(fmt.Sprintf("https://www.audible.%s", region.TLD))
 	if err != nil {
 		log.Fatalf("Unable to parse domain: %v", err)
 	}
-	fmt.Printf("Using %s (%s)\n", u.Host, region.Name)
+	log.Infof("Using %s (%s)\n", u.Host, region.Name)
 
-	username := prompt.String("Audible Username", prompt.Required)
-	password := prompt.Password("Audible Password", prompt.Required)
+	var username string
+	var password string
+	for {
+		username = PromptString("Audible Username")
+		if username == "" {
+			log.Error("Audible Username required")
+			continue
+		}
+		break
+	}
+	for {
+		password = PromptPassword("Audible Password")
+		if password == "" {
+			log.Error("Audible Password required")
+			continue
+		}
+		break
+	}
+
 	c, err := audible.NewClient(
 		audible.OptionBaseURL(u.String()),
 		audible.OptionUsername(username),
 		audible.OptionPassword(password),
-		audible.OptionCaptcha(func(imgURL string) string {
-			return prompt.String(fmt.Sprintf("%s\nPlease enter captcha from above URL", imgURL), prompt.Required)
-		}),
+		audible.OptionCaptcha(PromptCaptcha),
 		audible.OptionAuthCode(func() string {
-			return prompt.String("Auth Code", prompt.Required)
+			return PromptString("Auth Code (OTP)")
 		}),
-		audible.OptionRadioPrompt(func(msg string, opts []string) int {
-			return prompt.Radio(msg, opts)
+		audible.OptionPromptChoice(func(msg string, opts []string) int {
+			return PromptChoice(msg, opts)
 		}),
 	)
 	if err != nil {
@@ -54,68 +89,91 @@ func Run(runCtx context.Context) error {
 		return fmt.Errorf("Error authenticating: %w\n", err)
 	}
 
-	if err := DownloadLibrary(utils.ContextWithCancelChan(context.Background(), runCtx.Done()), c); err != nil {
+	if err := cli.DownloadLibrary(
+		utils.ContextWithCancelChan(context.Background(), runCtx.Done()),
+		c,
+	); err != nil {
 		return fmt.Errorf("Error downloading library: %w", err)
 	}
 
 	return nil
 }
 
-func RegionPrompt() audible.Region {
-	choices := make([]string, len(audible.Regions))
-	for i, r := range audible.Regions {
-		choices[i] = r.Name
+func (cli *CLI) GetNewBooks(books []*audible.Book) ([]*audible.Book, []*audible.Book, error) {
+	localBooks, err := common.ListDownloadedBooks(cli.DstDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetNewBooks Error: Unable to enumerate downloaded books: %w", err)
 	}
-	ri := prompt.Radio(
-		"Pick region",
-		choices,
-	)
-	if ri < 0 {
-		ri = 0
+	localBooksByID := make(map[string]*audible.Book, len(localBooks))
+	for _, b := range localBooks {
+		localBooksByID[b.ID()] = b
 	}
-	return audible.Regions[ri]
+
+	newBooks := make([]*audible.Book, 0, len(books)-len(localBooks))
+	downloadedBooks := make([]*audible.Book, 0, len(localBooks))
+	for _, b := range books {
+		if dlb, ok := localBooksByID[b.ID()]; ok {
+			b.LocalPath = dlb.LocalPath
+			if filepath.Ext(dlb.LocalPath) == ".mp4" {
+				// we're assuming any .mp4 found is completely downloaded
+				downloadedBooks = append(downloadedBooks, b)
+				continue
+			}
+			// the book may be partially downloaded
+		}
+		newBooks = append(newBooks, b)
+	}
+	return newBooks, downloadedBooks, nil
 }
 
-func DownloadLibrary(ctx context.Context, c *audible.Client) error {
+func (cli *CLI) DownloadLibrary(ctx context.Context, c *audible.Client) error {
 	activationBytes, err := c.GetActivationBytes(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting activation bytes: %s", err)
 	}
-	fmt.Printf("Activation Bytes: %s\n", string(activationBytes))
+	log.Debugf("Activation Bytes: %s\n", string(activationBytes))
 
 	books, err := c.GetLibrary(ctx)
 	if err != nil {
 		return fmt.Errorf("Error reading library: %s\n", err)
 	}
 
+	cli.DstDir = PromptDownloadDir()
+
+	var downloadedBooks []*audible.Book
+	books, downloadedBooks, err = cli.GetNewBooks(books)
+	if err != nil {
+		return fmt.Errorf("Error filtering library: %w\n", err)
+	}
+
 	// write info.txt file for all books already downloaded
-	for _, b := range books {
-		dir := b.Dir()
+	for _, b := range downloadedBooks {
+		dir := filepath.Dir(b.LocalPath)
 		fi, err := os.Lstat(dir)
 		if err == nil && fi.IsDir() {
 			// book exists
-			if err := WriteInfoFile(b); err != nil {
+			if err := common.WriteInfoFile(filepath.Dir(b.LocalPath), b); err != nil {
 				fmt.Printf("Error writing info file for %q: %s\n", b.Title, err)
 			}
 		}
 	}
 
-	books, err = GetNewBooks(books)
-	if err != nil {
-		return fmt.Errorf("Error filtering library: %s\n", err)
-	}
-
 	if len(books) == 0 {
-		fmt.Printf("You have downloaded all the books from your Audible library.\n")
+		log.Info("You have downloaded all the books from your Audible library.")
 		return nil
 	}
 
-outer:
+	getDstPath := PromptPathTemplate()
+	for _, b := range books {
+		b.LocalPath = filepath.Join(cli.DstDir, getDstPath(b))
+	}
+
+loop:
 	for {
 		answer := strings.ToLower(prompt.String(fmt.Sprintf("Download %d new books from your Audible library? (yes/no/list)", len(books)), prompt.Required))
 		switch answer {
 		case "yes":
-			break outer
+			break loop
 		case "list":
 			for i, b := range books {
 				fmt.Printf("%02d) %s by %s\n", i+1, b.Title, strings.Join(b.Authors, ", "))
@@ -167,10 +225,13 @@ outer:
 		defer wg.Done()
 		defer mainBar.Increment()
 
-		dir := book.Dir()
-		os.MkdirAll(dir, 0755)
+		dir := filepath.Dir(book.LocalPath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			pushError(fmt.Errorf("Error creating dir for %q: %s", book.Title, err))
+			return
+		}
 
-		if err := WriteInfoFile(book); err != nil {
+		if err := common.WriteInfoFile(filepath.Dir(book.LocalPath), book); err != nil {
 			pushError(fmt.Errorf("Error writing info file for %q: %s", book.Title, err))
 		}
 
@@ -280,37 +341,4 @@ outer:
 	errsMtx.Unlock()
 
 	return nil
-}
-
-func WriteInfoFile(book *audible.Book) error {
-	f, err := os.OpenFile(filepath.Join(book.Dir(), "info.txt"), os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return book.WriteInfo(f)
-}
-
-func GetNewBooks(books []*audible.Book) ([]*audible.Book, error) {
-	newBooks := make([]*audible.Book, 0, len(books))
-	for _, b := range books {
-		dir := b.Dir()
-		fi, err := os.Lstat(dir)
-		if err == nil && fi.IsDir() {
-			// book's dir exists, check if it has an mp4
-			m, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
-			if err != nil {
-				return nil, err
-			}
-			if len(m) > 0 {
-				// there's at least one mp4 in the book's dir
-				// assume the book has been downloaded
-				continue
-			}
-		}
-
-		// the book is assumed to need downloading
-		newBooks = append(newBooks, b)
-	}
-	return newBooks, nil
 }
