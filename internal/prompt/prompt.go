@@ -24,7 +24,7 @@ func HasRequiredOption(opts []Option) bool {
 	return false
 }
 
-func Radio(msg string, choices []string, opts ...Option) int {
+func Choice(msg string, choices []string, opts ...Option) int {
 	for {
 		for i, str := range choices {
 			fmt.Printf("%d) %s\n", i+1, str)
