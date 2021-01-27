@@ -137,3 +137,5 @@ golang.org/x/text/runes
 golang.org/x/text/transform
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
+# src.techknowlogick.com/xgo v1.2.1-0.20210120013813-c3fef1e88e60
+## explicit
