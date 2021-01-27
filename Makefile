@@ -15,43 +15,43 @@ all: build
 build: windows_gui window_cli linux_gui linux_cli darwin_gui darwin_cli
 	@echo version: $(VERSION)
 
-windows_gui: $(WINDOWS_GUI)
+windows_gui: $(WINDOWS_GUI) ## Build GUI for Windows
 
-windows_cli: $(WINDOWS_CLI)
+windows_cli: $(WINDOWS_CLI) ## Build CLI for Windows
 
-linux_gui: $(LINUX_GUI)
+linux_gui: $(LINUX_GUI) ## Build GUI for Linux
 
-linux_cli: $(LINUX_CLI)
+linux_cli: $(LINUX_CLI) ## Build CLI for Linux
 
-darwin_gui: $(DARWIN_GUI)
+darwin_gui: $(DARWIN_GUI) ## Build GUI for Darwin (macOS)
 
-darwin_cli: $(DARWIN_CLI)
+darwin_cli: $(DARWIN_CLI) ## Build CLI for Darwin (macOS)
 
 $(WINDOWS_GUI):
-	env GOOS=windows GOARCH=amd64 go build -i -v -o cli_$(WINDOWS) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(WINDOWS) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(WINDOWS_CLI):
 	env GOOS=windows GOARCH=amd64 go build -i -v -o cli_$(WINDOWS) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(LINUX_GUI):
-	env GOOS=linux GOARCH=amd64 go build -i -v -o cli_$(LINUX) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(LINUX) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(LINUX_CLI):
 	env GOOS=linux GOARCH=amd64 go build -i -v -o cli_$(LINUX) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(DARWIN_GUI):
-	env GOOS=darwin GOARCH=amd64 go build -i -v -o cli_$(DARWIN) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(DARWIN) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(DARWIN_CLI):
 	env GOOS=darwin GOARCH=amd64 go build -i -v -o cli_$(DARWIN) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 clean: ## Remove previous build
-	rm $(WINDOWS_GUI)
-	rm $(WINDOWS_CLI)
-	rm $(LINUX_GUI)
-	rm $(LINUX_CLI)
-	rm $(DARWIN_GUI)
-	rm $(DARWIN_CLI)
+	rm -f $(WINDOWS_GUI)
+	rm -f $(WINDOWS_CLI)
+	rm -f $(LINUX_GUI)
+	rm -f $(LINUX_CLI)
+	rm -f $(DARWIN_GUI)
+	rm -f $(DARWIN_CLI)
 
 help: ## Display available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
