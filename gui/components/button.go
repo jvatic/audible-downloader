@@ -69,7 +69,7 @@ func ButtonActionHide() ButtonAction {
 	}
 }
 
-func NewButton(label string, opts ...ButtonOption) (*widget.Button, chan<- ButtonAction) {
+func NewButton(renderQueue chan<- func(w fyne.Window), label string, opts ...ButtonOption) (*widget.Button, chan<- ButtonAction) {
 	button := widget.NewButton(label, nil)
 	for _, fn := range opts {
 		fn(button)
@@ -82,7 +82,9 @@ func NewButton(label string, opts ...ButtonOption) (*widget.Button, chan<- Butto
 			if !ok {
 				return
 			}
-			fn(button)
+			renderQueue <- func(w fyne.Window) {
+				fn(button)
+			}
 		}
 	}()
 

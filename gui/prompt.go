@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func PromptCaptcha(w fyne.Window, imgURL string) string {
+func PromptCaptcha(renderQueue chan<- func(w fyne.Window), imgURL string) string {
 	resp, err := http.Get(imgURL)
 	if err != nil {
 		log.Errorf("Error fetching captcha image (%s): %s", imgURL, err)
@@ -38,7 +38,7 @@ func PromptCaptcha(w fyne.Window, imgURL string) string {
 		answer <- strings.TrimSpace(captcha)
 	}
 
-	captchaInput, captchaInCh, captchaOutCh := components.NewEntry(
+	captchaInput, captchaInCh, captchaOutCh := components.NewEntry(renderQueue,
 		components.EntryOptionOnEnter(func() { d.Hide() }),
 	)
 	defer close(captchaInCh)
@@ -57,23 +57,25 @@ func PromptCaptcha(w fyne.Window, imgURL string) string {
 	captchaImage := canvas.NewImageFromImage(img)
 	captchaImage.FillMode = canvas.ImageFillOriginal
 
-	d = dialog.NewCustom(
-		"Captcha", "Submit",
-		fyne.NewContainerWithLayout(
-			layout.NewVBoxLayout(),
-			components.NewImmutableText("Please enter the letters and numbers in the image below to continue", components.TextOptionBold()),
-			captchaImage,
-			captchaInput,
-		),
-		w,
-	)
-	d.SetOnClosed(doSubmit)
-	d.Show()
+	renderQueue <- func(w fyne.Window) {
+		d = dialog.NewCustom(
+			"Captcha", "Submit",
+			fyne.NewContainerWithLayout(
+				layout.NewVBoxLayout(),
+				components.NewImmutableText("Please enter the letters and numbers in the image below to continue", components.TextOptionBold()),
+				captchaImage,
+				captchaInput,
+			),
+			w,
+		)
+		d.SetOnClosed(doSubmit)
+		d.Show()
+	}
 
 	return <-answer
 }
 
-func PromptString(w fyne.Window, msg string) string {
+func PromptString(renderQueue chan<- func(w fyne.Window), msg string) string {
 	answer := make(chan string)
 
 	var d dialog.Dialog
@@ -85,7 +87,7 @@ func PromptString(w fyne.Window, msg string) string {
 		answer <- strings.TrimSpace(inputText)
 	}
 
-	textInput, textInCh, textOutCh := components.NewEntry(
+	textInput, textInCh, textOutCh := components.NewEntry(renderQueue,
 		components.EntryOptionOnEnter(func() { d.Hide() }),
 	)
 	defer close(textInCh)
@@ -102,22 +104,24 @@ func PromptString(w fyne.Window, msg string) string {
 		}
 	}()
 
-	d = dialog.NewCustom(
-		"", "Submit",
-		fyne.NewContainerWithLayout(
-			layout.NewVBoxLayout(),
-			components.NewImmutableText(msg, components.TextOptionBold()),
-			textInput,
-		),
-		w,
-	)
-	d.SetOnClosed(doSubmit)
-	d.Show()
+	renderQueue <- func(w fyne.Window) {
+		d = dialog.NewCustom(
+			"", "Submit",
+			fyne.NewContainerWithLayout(
+				layout.NewVBoxLayout(),
+				components.NewImmutableText(msg, components.TextOptionBold()),
+				textInput,
+			),
+			w,
+		)
+		d.SetOnClosed(doSubmit)
+		d.Show()
+	}
 
 	return <-answer
 }
 
-func PromptChoice(w fyne.Window, msg string, options []string) int {
+func PromptChoice(renderQueue chan<- func(w fyne.Window), msg string, options []string) int {
 	answer := make(chan int)
 
 	var idx int
@@ -125,26 +129,28 @@ func PromptChoice(w fyne.Window, msg string, options []string) int {
 		answer <- idx
 	}
 
-	selectInput := widget.NewSelect(options, func(s string) {
-		for i, o := range options {
-			if o == s {
-				idx = i
-				return
+	renderQueue <- func(w fyne.Window) {
+		selectInput := widget.NewSelect(options, func(s string) {
+			for i, o := range options {
+				if o == s {
+					idx = i
+					return
+				}
 			}
-		}
-	})
+		})
 
-	d := dialog.NewCustom(
-		"", "Submit",
-		fyne.NewContainerWithLayout(
-			layout.NewVBoxLayout(),
-			components.NewImmutableText(msg, components.TextOptionBold()),
-			selectInput,
-		),
-		w,
-	)
-	d.SetOnClosed(doSubmit)
-	d.Show()
+		d := dialog.NewCustom(
+			"", "Submit",
+			fyne.NewContainerWithLayout(
+				layout.NewVBoxLayout(),
+				components.NewImmutableText(msg, components.TextOptionBold()),
+				selectInput,
+			),
+			w,
+		)
+		d.SetOnClosed(doSubmit)
+		d.Show()
+	}
 
 	return <-answer
 }

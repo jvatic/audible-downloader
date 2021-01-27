@@ -49,7 +49,7 @@ func (c *Controller) Run(w fyne.Window) {
 	// 		sort.Sort(audible.ByTitle(books))
 	// 		stateCh := NewLibState(&audible.Client{}, []byte{}, books)
 	// 		if err := Library(w, c.render, stateCh); err != nil {
-	// 			ShowFatalErrorDialog(w, err)
+	// 			ShowFatalErrorDialog(c.render, err)
 	// 			return
 	// 		}
 	// 	} else {
@@ -57,9 +57,9 @@ func (c *Controller) Run(w fyne.Window) {
 	// 	}
 	// }
 
-	client, err := SignIn(w, c.render)
+	client, err := SignIn(c.render)
 	if err != nil {
-		ShowFatalErrorDialog(w, err)
+		ShowFatalErrorDialog(c.render, err)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (c *Controller) Run(w fyne.Window) {
 
 	stateCh := NewLibState(client, activationBytes, books)
 	if err := Library(w, c.render, stateCh); err != nil {
-		ShowFatalErrorDialog(w, err)
+		ShowFatalErrorDialog(c.render, err)
 		return
 	}
 

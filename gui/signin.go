@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SignIn(w fyne.Window, renderQueue chan<- func(w fyne.Window)) (*audible.Client, error) {
+func SignIn(renderQueue chan<- func(w fyne.Window)) (*audible.Client, error) {
 	var loading bool
 	var username, password string
 	var usernameMtx, passwordMtx sync.RWMutex
@@ -47,13 +47,13 @@ func SignIn(w fyne.Window, renderQueue chan<- func(w fyne.Window)) (*audible.Cli
 			close(submitChan)
 		}
 
-		usernameInput, usernameInCh, usernameOutCh := components.NewEntry(
+		usernameInput, usernameInCh, usernameOutCh := components.NewEntry(renderQueue,
 			components.EntryOptionOnEnter(doSubmit),
 			components.EntryOptionPlaceholder("yourusername@example.com"),
 		)
 		usernameInCh <- username
 
-		passwordInput, passwordInCh, passwordOutCh := components.NewEntry(
+		passwordInput, passwordInCh, passwordOutCh := components.NewEntry(renderQueue,
 			components.EntryOptionOnEnter(doSubmit),
 			components.EntryOptionPassword(),
 			components.EntryOptionPlaceholder("Password"),
@@ -85,7 +85,9 @@ func SignIn(w fyne.Window, renderQueue chan<- func(w fyne.Window)) (*audible.Cli
 
 		cancelBtn := widget.NewButton("Quit", func() {
 			log.Debug("Signin canceled")
-			w.Close()
+			renderQueue <- func(w fyne.Window) {
+				w.Close()
+			}
 		})
 
 		submitBtn := widget.NewButton("Sign in", doSubmit)
@@ -169,10 +171,10 @@ func SignIn(w fyne.Window, renderQueue chan<- func(w fyne.Window)) (*audible.Cli
 	renderQueue <- render()
 
 	<-submitChan
-	return doSignin(w, username, password, region)
+	return doSignin(renderQueue, username, password, region)
 }
 
-func doSignin(w fyne.Window, username, password string, region *audible.Region) (*audible.Client, error) {
+func doSignin(renderQueue chan<- func(w fyne.Window), username, password string, region *audible.Region) (*audible.Client, error) {
 	u, err := url.Parse(fmt.Sprintf("https://www.audible.%s", region.TLD))
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse domain: %w", err)
@@ -184,13 +186,13 @@ func doSignin(w fyne.Window, username, password string, region *audible.Region) 
 		audible.OptionUsername(username),
 		audible.OptionPassword(password),
 		audible.OptionCaptcha(func(imgURL string) string {
-			return PromptCaptcha(w, imgURL)
+			return PromptCaptcha(renderQueue, imgURL)
 		}),
 		audible.OptionAuthCode(func() string {
-			return PromptString(w, "Auth Code (OTP)")
+			return PromptString(renderQueue, "Auth Code (OTP)")
 		}),
 		audible.OptionPromptChoice(func(msg string, opts []string) int {
-			return PromptChoice(w, msg, opts)
+			return PromptChoice(renderQueue, msg, opts)
 		}),
 	)
 	if err != nil {

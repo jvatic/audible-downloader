@@ -623,7 +623,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 	var configUI fyne.CanvasObject
 	done := make(chan struct{})
 
-	dirPickerBtn, dirPickerBtnCh := components.NewButton(
+	dirPickerBtn, dirPickerBtnCh := components.NewButton(renderQueue,
 		GetDirPickerBtnText(stateCh),
 		components.ButtonOptionOnTapped(func() {
 			d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
@@ -643,7 +643,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		s.dirPickerBtnCh = dirPickerBtnCh
 	}
 
-	dirEntryBtn, dirEntryBtnCh := components.NewButton("",
+	dirEntryBtn, dirEntryBtnCh := components.NewButton(renderQueue, "",
 		components.ButtonOptionIcon(theme.FolderIcon()),
 		components.ButtonOptionOnTapped(func() {
 			d := dialog.NewEntryDialog("Please enter the full path for the desired output folder", "", func(str string) {
@@ -665,7 +665,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		s.dirEntryBtnCh = dirEntryBtnCh
 	}
 
-	dirCreateBtn, dirCreateBtnCh := components.NewButton("",
+	dirCreateBtn, dirCreateBtnCh := components.NewButton(renderQueue, "",
 		components.ButtonOptionIcon(theme.FolderNewIcon()),
 		components.ButtonOptionOnTapped(func() {
 			d := dialog.NewEntryDialog("Create folder", fmt.Sprintf("%s%s", FormatFilePath(GetSelectedDirPath(stateCh), 200), string(filepath.Separator)), func(str string) {
@@ -697,7 +697,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 			w.SetContent(mainUI)
 		}
 	})
-	configBtn, configBtnCh := components.NewButton("",
+	configBtn, configBtnCh := components.NewButton(renderQueue, "",
 		components.ButtonOptionIcon(theme.SettingsIcon()),
 		components.ButtonOptionOnTapped(func() {
 			renderQueue <- func(w fyne.Window) {
@@ -709,7 +709,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		s.configBtnCh = configBtnCh
 	}
 
-	downloadBtn, downloadBtnCh := components.NewButton(
+	downloadBtn, downloadBtnCh := components.NewButton(renderQueue,
 		DownloadBtnText(stateCh),
 		components.ButtonOptionIcon(theme.DownloadIcon()),
 		components.ButtonOptionOnTapped(func() {
@@ -721,13 +721,13 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		s.downloadBtnCh = downloadBtnCh
 	}
 
-	progressBar, progressBarCh := components.NewProgressBar()
+	progressBar, progressBarCh := components.NewProgressBar(renderQueue)
 	progressBarCh <- components.ProgressBarActionHide()
 	stateCh <- func(s *libState) {
 		s.progressBarCh = progressBarCh
 	}
 
-	controlCheckbox, controlCheckboxCh := components.NewCheckbox("",
+	controlCheckbox, controlCheckboxCh := components.NewCheckbox(renderQueue, "",
 		components.CheckboxOptionOnChange(func(checked bool) {
 			stateCh <- func(s *libState) {
 				n := 0
@@ -760,7 +760,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 
 	bookCheckboxes := make([]*widget.Check, 0, len(books))
 	for i := 0; i < len(books); i++ {
-		checkbox, checkboxCh := components.NewCheckbox("",
+		checkbox, checkboxCh := components.NewCheckbox(renderQueue, "",
 			components.CheckboxOptionOnChange(func(checked bool) {
 				if checked {
 					stateCh <- func(s *libState) {
@@ -799,7 +799,7 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 					s.bookStatusChs[i] = statusTextCh
 				}
 
-				pb, pbCh := components.NewProgressBar()
+				pb, pbCh := components.NewProgressBar(renderQueue)
 				pbCh <- components.ProgressBarActionHide()
 				stateCh <- func(s *libState) {
 					s.bookProgressBarChs[i] = pbCh
@@ -945,7 +945,7 @@ func BuildConfigUI(renderQueue chan<- func(w fyne.Window), stateCh chan<- LibSta
 	}
 	updatePreviewText()
 
-	pathTemplateInput, pathTemplateInputInCh, pathTemplateInputOutCh := components.NewEntry()
+	pathTemplateInput, pathTemplateInputInCh, pathTemplateInputOutCh := components.NewEntry(renderQueue)
 	pathTemplateInputInCh <- getPathTemplate()
 	go func() {
 		for {
@@ -959,7 +959,7 @@ func BuildConfigUI(renderQueue chan<- func(w fyne.Window), stateCh chan<- LibSta
 		}
 	}()
 
-	maxAuthorsInput, maxAuthorsInputInCh, maxAuthorsInputOutCh := components.NewIntEntry()
+	maxAuthorsInput, maxAuthorsInputInCh, maxAuthorsInputOutCh := components.NewIntEntry(renderQueue)
 	maxAuthorsInputInCh <- getMaxAuthors()
 	go func() {
 		for {
@@ -973,7 +973,7 @@ func BuildConfigUI(renderQueue chan<- func(w fyne.Window), stateCh chan<- LibSta
 		}
 	}()
 
-	authorSeparatorInput, authorSeparatorInputInCh, authorSeparatorInputOutCh := components.NewEntry()
+	authorSeparatorInput, authorSeparatorInputInCh, authorSeparatorInputOutCh := components.NewEntry(renderQueue)
 	authorSeparatorInputInCh <- getAuthorSeparator()
 	go func() {
 		for {

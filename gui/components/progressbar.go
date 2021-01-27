@@ -1,6 +1,9 @@
 package components
 
-import "fyne.io/fyne/widget"
+import (
+	"fyne.io/fyne"
+	"fyne.io/fyne/widget"
+)
 
 type ProgressBarOption = func(pb *widget.ProgressBar)
 
@@ -38,8 +41,7 @@ func IsProgressBarHidden(pbCh chan<- ProgressBarAction) bool {
 	return hidden
 }
 
-// TODO make it actually work
-func NewProgressBar(opts ...ProgressBarOption) (*widget.ProgressBar, chan<- ProgressBarAction) {
+func NewProgressBar(renderQueue chan<- func(w fyne.Window), opts ...ProgressBarOption) (*widget.ProgressBar, chan<- ProgressBarAction) {
 	pb := widget.NewProgressBar()
 	for _, fn := range opts {
 		fn(pb)
@@ -53,7 +55,9 @@ func NewProgressBar(opts ...ProgressBarOption) (*widget.ProgressBar, chan<- Prog
 				return
 			}
 
-			fn(pb)
+			renderQueue <- func(w fyne.Window) {
+				fn(pb)
+			}
 		}
 	}()
 

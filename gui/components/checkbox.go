@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fyne.io/fyne"
 	"fyne.io/fyne/widget"
 )
 
@@ -53,7 +54,7 @@ func IsCheckboxChecked(ch chan<- CheckboxAction) bool {
 	return checked
 }
 
-func NewCheckbox(label string, opts ...CheckboxOption) (*widget.Check, chan<- CheckboxAction) {
+func NewCheckbox(renderQueue chan<- func(w fyne.Window), label string, opts ...CheckboxOption) (*widget.Check, chan<- CheckboxAction) {
 	cb := widget.NewCheck(label, nil)
 	for _, fn := range opts {
 		fn(cb)
@@ -67,7 +68,9 @@ func NewCheckbox(label string, opts ...CheckboxOption) (*widget.Check, chan<- Ch
 				return
 			}
 
-			fn(cb)
+			renderQueue <- func(w fyne.Window) {
+				fn(cb)
+			}
 		}
 	}()
 

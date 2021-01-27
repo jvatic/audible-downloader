@@ -9,15 +9,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ShowFatalErrorDialog(w fyne.Window, err error) {
+func ShowFatalErrorDialog(renderQueue chan<- func(w fyne.Window), err error) {
 	log.Error(err)
-	d := dialog.NewCustom(
-		"Error", "Quit",
-		canvas.NewText(err.Error(), color.Black),
-		w,
-	)
-	d.SetOnClosed(func() {
-		w.Close()
-	})
-	d.Show()
+	renderQueue <- func(w fyne.Window) {
+		d := dialog.NewCustom(
+			"Error", "Quit",
+			canvas.NewText(err.Error(), color.Black),
+			w,
+		)
+		d.SetOnClosed(func() {
+			w.Close()
+		})
+		d.Show()
+	}
 }

@@ -90,7 +90,7 @@ func EntryOptionInt() EntryOption {
 	}
 }
 
-func NewEntry(opts ...EntryOption) (*entry, chan<- string, <-chan string) {
+func NewEntry(renderQueue chan<- func(w fyne.Window), opts ...EntryOption) (*entry, chan<- string, <-chan string) {
 	entry := &entry{}
 	entry.ExtendBaseWidget(entry)
 	for _, fn := range opts {
@@ -108,7 +108,9 @@ func NewEntry(opts ...EntryOption) (*entry, chan<- string, <-chan string) {
 				return
 			}
 
-			entry.SetText(text)
+			renderQueue <- func(w fyne.Window) {
+				entry.SetText(text)
+			}
 		}
 	}()
 
@@ -119,9 +121,9 @@ func NewEntry(opts ...EntryOption) (*entry, chan<- string, <-chan string) {
 	return entry, inCh, outCh
 }
 
-func NewIntEntry(opts ...EntryOption) (*entry, chan<- int, <-chan int) {
+func NewIntEntry(renderQueue chan<- func(w fyne.Window), opts ...EntryOption) (*entry, chan<- int, <-chan int) {
 	opts = append([]EntryOption{EntryOptionInt()}, opts...)
-	entry, inStrCh, outStrCh := NewEntry(opts...)
+	entry, inStrCh, outStrCh := NewEntry(renderQueue, opts...)
 
 	inCh := make(chan int)
 	outCh := make(chan int)
