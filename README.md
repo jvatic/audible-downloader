@@ -10,3 +10,13 @@ Download your Audible library for personal use/backup. Please do not use for ill
 1. Run the downloaded binary and follow the prompts.
 
 This will download your entire Audible library and remove the DRM for your personal use.
+
+## Build
+
+Run `make` to build all targets except GUI for windows (see below).
+
+### Windows GUI
+
+You will need Docker running for this to work as [xgo](https://github.com/techknowlogick/xgo) is used.
+
+To build just the Windows GUI, run `make windows_gui`. And to build everything, run `make build_all`.
