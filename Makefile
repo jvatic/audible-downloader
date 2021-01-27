@@ -12,7 +12,7 @@ APP_NAME="Audible Downloader"
 
 all: build
 
-build: window_cli linux_gui linux_cli darwin_gui darwin_cli ## Build all targets except GUI for Windows
+build: windows_cli linux_gui linux_cli darwin_gui darwin_cli ## Build all targets except GUI for Windows
 	@echo version: $(VERSION)
 
 build_all: build windows_gui ## Build all targets including GUI for Windows (requires xgo)
