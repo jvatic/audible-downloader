@@ -1,5 +1,5 @@
 EXECUTABLE=adl
-WINDOWS_GUI=$(EXECUTABLE)_windows_amd64_gui.exe
+WINDOWS_GUI=$(EXECUTABLE)_windows_amd64_gui
 WINDOWS_CLI=$(EXECUTABLE)_windows_amd64_cli.exe
 LINUX_GUI=$(EXECUTABLE)_linux_amd64_gui
 LINUX_CLI=$(EXECUTABLE)_linux_amd64_cli
@@ -12,8 +12,10 @@ APP_NAME="Audible Downloader"
 
 all: build
 
-build: windows_gui window_cli linux_gui linux_cli darwin_gui darwin_cli
+build: window_cli linux_gui linux_cli darwin_gui darwin_cli ## Build all targets except GUI for Windows
 	@echo version: $(VERSION)
+
+build_all: build windows_gui ## Build all targets including GUI for Windows (requires xgo)
 
 windows_gui: $(WINDOWS_GUI) ## Build GUI for Windows
 
@@ -28,25 +30,26 @@ darwin_gui: $(DARWIN_GUI) ## Build GUI for Darwin (macOS)
 darwin_cli: $(DARWIN_CLI) ## Build CLI for Darwin (macOS)
 
 $(WINDOWS_GUI):
-	env GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(WINDOWS) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	xgo -targets windows/amd64 -out adl_windows_amd64_gui -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	mv $(shell find $(WINDOWS_GUI)-*.exe) $(WINDOWS_GUI).exe
 
 $(WINDOWS_CLI):
-	env GOOS=windows GOARCH=amd64 go build -i -v -o cli_$(WINDOWS) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=windows GOARCH=amd64 go build -i -v -o $(WINDOWS_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(LINUX_GUI):
-	env GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(LINUX) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o $(LINUX_GUI) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(LINUX_CLI):
-	env GOOS=linux GOARCH=amd64 go build -i -v -o cli_$(LINUX) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=linux GOARCH=amd64 go build -i -v -o $(LINUX_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(DARWIN_GUI):
-	env GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o cli_$(DARWIN) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o $(DARWIN_GUI) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(DARWIN_CLI):
-	env GOOS=darwin GOARCH=amd64 go build -i -v -o cli_$(DARWIN) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=darwin GOARCH=amd64 go build -i -v -o $(DARWIN_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 clean: ## Remove previous build
-	rm -f $(WINDOWS_GUI)
+	rm -f $(WINDOWS_GUI).exe
 	rm -f $(WINDOWS_CLI)
 	rm -f $(LINUX_GUI)
 	rm -f $(LINUX_CLI)
