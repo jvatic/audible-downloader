@@ -3,7 +3,6 @@
 /*.log
 /adl_darwin_amd64_gui
 /adl_darwin_amd64_cli
-/adl_windows_amd64_gui.exe
+/adl_windows_amd64_gui*.exe
 /adl_windows_amd64_cli.exe
-/adl_linux_amd64_gui
 /adl_linux_amd64_cli
