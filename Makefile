@@ -1,7 +1,6 @@
 EXECUTABLE=adl
 WINDOWS_GUI=$(EXECUTABLE)_windows_amd64_gui
 WINDOWS_CLI=$(EXECUTABLE)_windows_amd64_cli.exe
-LINUX_GUI=$(EXECUTABLE)_linux_amd64_gui
 LINUX_CLI=$(EXECUTABLE)_linux_amd64_cli
 DARWIN_GUI=$(EXECUTABLE)_darwin_amd64_gui
 DARWIN_CLI=$(EXECUTABLE)_darwin_amd64_cli
@@ -12,7 +11,7 @@ APP_NAME="Audible Downloader"
 
 all: build
 
-build: windows_cli linux_gui linux_cli darwin_gui darwin_cli ## Build all targets except GUI for Windows
+build: windows_cli linux_cli darwin_gui darwin_cli ## Build all targets except GUI for Windows
 	@echo version: $(VERSION)
 
 build_all: build windows_gui ## Build all targets including GUI for Windows (requires xgo)
@@ -20,8 +19,6 @@ build_all: build windows_gui ## Build all targets including GUI for Windows (req
 windows_gui: $(WINDOWS_GUI) ## Build GUI for Windows
 
 windows_cli: $(WINDOWS_CLI) ## Build CLI for Windows
-
-linux_gui: $(LINUX_GUI) ## Build GUI for Linux
 
 linux_cli: $(LINUX_CLI) ## Build CLI for Linux
 
@@ -36,9 +33,6 @@ $(WINDOWS_GUI):
 $(WINDOWS_CLI):
 	env GOOS=windows GOARCH=amd64 go build -i -v -o $(WINDOWS_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
-$(LINUX_GUI):
-	env GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o $(LINUX_GUI) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
-
 $(LINUX_CLI):
 	env GOOS=linux GOARCH=amd64 go build -i -v -o $(LINUX_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
@@ -51,7 +45,6 @@ $(DARWIN_CLI):
 clean: ## Remove previous build
 	rm -f $(WINDOWS_GUI).exe
 	rm -f $(WINDOWS_CLI)
-	rm -f $(LINUX_GUI)
 	rm -f $(LINUX_CLI)
 	rm -f $(DARWIN_GUI)
 	rm -f $(DARWIN_CLI)
