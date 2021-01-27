@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SignIn(w fyne.Window, renderChan chan fyne.CanvasObject) (*audible.Client, error) {
+func SignIn(w fyne.Window, renderQueue chan<- func(w fyne.Window)) (*audible.Client, error) {
 	var loading bool
 	var username, password string
 	var usernameMtx, passwordMtx sync.RWMutex
@@ -22,6 +22,13 @@ func SignIn(w fyne.Window, renderChan chan fyne.CanvasObject) (*audible.Client, 
 	submitChan := make(chan struct{})
 
 	var build func() fyne.CanvasObject
+	render := func() func(w fyne.Window) {
+		return func(w fyne.Window) {
+			w.SetContent(
+				components.ApplyTemplate(build()),
+			)
+		}
+	}
 	build = func() fyne.CanvasObject {
 		submitEnabled := false
 		doSubmit := func() {
@@ -36,7 +43,7 @@ func SignIn(w fyne.Window, renderChan chan fyne.CanvasObject) (*audible.Client, 
 				return
 			}
 			loading = true
-			renderChan <- build()
+			renderQueue <- render()
 			close(submitChan)
 		}
 
@@ -159,7 +166,7 @@ func SignIn(w fyne.Window, renderChan chan fyne.CanvasObject) (*audible.Client, 
 			layout.NewSpacer(),
 		)
 	}
-	renderChan <- build()
+	renderQueue <- render()
 
 	<-submitChan
 	return doSignin(w, username, password, region)

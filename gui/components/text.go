@@ -80,7 +80,7 @@ func TextOptionAlignment(alignment fyne.TextAlign) TextOption {
 	}
 }
 
-func NewText(text string, opts ...TextOption) (*canvas.Text, chan<- string) {
+func NewText(renderQueue chan<- func(w fyne.Window), text string, opts ...TextOption) (*canvas.Text, chan<- string) {
 	t := canvas.NewText(text, fyne.CurrentApp().Settings().Theme().TextColor())
 	for _, fn := range opts {
 		fn(t)
@@ -94,8 +94,10 @@ func NewText(text string, opts ...TextOption) (*canvas.Text, chan<- string) {
 				return
 			}
 
-			t.SetText(text)
-			t.Refresh()
+			renderQueue <- func(w fyne.Window) {
+				t.Text = text
+				t.Refresh()
+			}
 		}
 	}()
 
@@ -110,7 +112,7 @@ func NewImmutableText(text string, opts ...TextOption) *canvas.Text {
 	return t
 }
 
-func NewWrappedText(text string, width int, opts ...TextOption) (fyne.CanvasObject, chan<- string) {
+func NewWrappedText(renderQueue chan<- func(w fyne.Window), text string, width int, opts ...TextOption) (fyne.CanvasObject, chan<- string) {
 	container := container.NewVBox()
 	ch := make(chan string)
 
@@ -172,7 +174,9 @@ func NewWrappedText(text string, width int, opts ...TextOption) (fyne.CanvasObje
 				return
 			}
 
-			renderText(text)
+			renderQueue <- func(w fyne.Window) {
+				renderText(text)
+			}
 		}
 	}()
 

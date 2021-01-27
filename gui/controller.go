@@ -5,19 +5,20 @@ import (
 	"sort"
 
 	"fyne.io/fyne"
-	"fyne.io/fyne/layout"
 	"github.com/jvatic/audible-downloader/audible"
 	log "github.com/sirupsen/logrus"
 )
 
+type RenderFunc func(w fyne.Window)
+
 type Controller struct {
-	render chan fyne.CanvasObject
+	render chan func(w fyne.Window)
 	done   chan struct{}
 }
 
 func NewController() *Controller {
 	return &Controller{
-		render: make(chan fyne.CanvasObject),
+		render: make(chan func(w fyne.Window)),
 		done:   make(chan struct{}),
 	}
 }
@@ -27,13 +28,14 @@ func (c *Controller) Run(w fyne.Window) {
 		// render loop
 		for {
 			select {
-			case view := <-c.render:
-				container := fyne.NewContainerWithLayout(
-					layout.NewMaxLayout(),
-					view,
-				)
-				w.SetContent(container)
+			case fn, ok := <-c.render:
+				if !ok {
+					return
+				}
+				fn(w)
+				break
 			case <-c.done:
+				break
 			}
 		}
 	}()

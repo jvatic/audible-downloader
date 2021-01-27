@@ -618,7 +618,7 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 	}
 }
 
-func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- LibStateAction) error {
+func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<- LibStateAction) error {
 	var mainUI fyne.CanvasObject
 	var configUI fyne.CanvasObject
 	done := make(chan struct{})
@@ -691,14 +691,18 @@ func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- Li
 		s.dirCreateBtnCh = dirCreateBtnCh
 	}
 
-	configUI = BuildConfigUI(stateCh, func() {
+	configUI = BuildConfigUI(renderQueue, stateCh, func() {
 		// called when config UI closed
-		renderChan <- mainUI
+		renderQueue <- func(w fyne.Window) {
+			w.SetContent(mainUI)
+		}
 	})
 	configBtn, configBtnCh := components.NewButton("",
 		components.ButtonOptionIcon(theme.SettingsIcon()),
 		components.ButtonOptionOnTapped(func() {
-			renderChan <- configUI
+			renderQueue <- func(w fyne.Window) {
+				w.SetContent(configUI)
+			}
 		}),
 	)
 	stateCh <- func(s *libState) {
@@ -790,7 +794,7 @@ func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- Li
 					thumbImg = img
 				}
 
-				statusText, statusTextCh := components.NewText(BookStatusText(b))
+				statusText, statusTextCh := components.NewText(renderQueue, BookStatusText(b))
 				stateCh <- func(s *libState) {
 					s.bookStatusChs[i] = statusTextCh
 				}
@@ -801,14 +805,16 @@ func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- Li
 					s.bookProgressBarChs[i] = pbCh
 				}
 
-				titleText, _ := components.NewWrappedText(b.Title, width, components.TextOptionBold())
+				titleText, _ := components.NewWrappedText(renderQueue, b.Title, width, components.TextOptionBold())
 
 				writtenByText, _ := components.NewWrappedText(
+					renderQueue,
 					fmt.Sprintf("Written by: %s", strings.Join(b.Authors, ", ")),
 					width,
 				)
 
 				narratedByText, _ := components.NewWrappedText(
+					renderQueue,
 					fmt.Sprintf("Narrated by: %s", strings.Join(b.Narrators, ", ")),
 					width,
 				)
@@ -832,7 +838,7 @@ func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- Li
 			return container.NewVBox(rows...)
 		})()
 
-		headerText, _ := components.NewText("Library")
+		headerText, _ := components.NewText(renderQueue, "Library")
 		header := container.NewCenter(
 			headerText,
 		)
@@ -853,25 +859,29 @@ func Library(w fyne.Window, renderChan chan fyne.CanvasObject, stateCh chan<- Li
 			progressBar,
 		)
 
-		return fyne.NewContainerWithLayout(
-			layout.NewHBoxLayout(),
-			layout.NewSpacer(),
+		return components.ApplyTemplate(
 			fyne.NewContainerWithLayout(
-				layout.NewBorderLayout(top, bottom, nil, nil),
-				top,
-				container.NewVScroll(booksList),
-				bottom,
+				layout.NewHBoxLayout(),
+				layout.NewSpacer(),
+				fyne.NewContainerWithLayout(
+					layout.NewBorderLayout(top, bottom, nil, nil),
+					top,
+					container.NewVScroll(booksList),
+					bottom,
+				),
+				layout.NewSpacer(),
 			),
-			layout.NewSpacer(),
 		)
 	})()
 
-	renderChan <- mainUI
+	renderQueue <- func(w fyne.Window) {
+		w.SetContent(mainUI)
+	}
 	<-done
 	return nil
 }
 
-func BuildConfigUI(stateCh chan<- LibStateAction, closeFunc func()) fyne.CanvasObject {
+func BuildConfigUI(renderQueue chan<- func(w fyne.Window), stateCh chan<- LibStateAction, closeFunc func()) fyne.CanvasObject {
 	var pathTemplateMtx sync.RWMutex
 	pathTemplate := common.DefaultPathTemplate
 	setPathTemplate := func(text string) {
@@ -929,7 +939,7 @@ func BuildConfigUI(stateCh chan<- LibStateAction, closeFunc func()) fyne.CanvasO
 		}
 	}
 
-	previewText, previewTextCh := components.NewText("")
+	previewText, previewTextCh := components.NewText(renderQueue, "")
 	updatePreviewText := func() {
 		previewTextCh <- GetDstPath(stateCh, &common.SampleBook)
 	}
@@ -977,42 +987,44 @@ func BuildConfigUI(stateCh chan<- LibStateAction, closeFunc func()) fyne.CanvasO
 		}
 	}()
 
-	return container.NewVBox(
-		container.NewCenter(
-			components.NewImmutableText("Download Settings", components.TextOptionHeading(components.H1)),
-		),
+	return components.ApplyTemplate(
 		container.NewVBox(
-			components.NewImmutableText("Download Path Template", components.TextOptionBold()),
-			pathTemplateInput,
-			Indent(
-				components.NewImmutableText("Format Options: ", components.TextOptionBold()),
-				container.NewHBox(
-					components.NewImmutableText("%TITLE%", components.TextOptionBold()),
-					canvas.NewText(" - Full book title as seen in library", color.Black),
-				),
-				container.NewHBox(
-					components.NewImmutableText("%SHORT_TITLE%", components.TextOptionBold()),
-					canvas.NewText(" - Book title up to the first occurance of ", color.Black),
-					components.NewImmutableText(":", components.TextOptionBold()),
-				),
-				components.NewImmutableText("%AUTHOR%", components.TextOptionBold()),
+			container.NewCenter(
+				components.NewImmutableText("Download Settings", components.TextOptionHeading(components.H1)),
+			),
+			container.NewVBox(
+				components.NewImmutableText("Download Path Template", components.TextOptionBold()),
+				pathTemplateInput,
 				Indent(
+					components.NewImmutableText("Format Options: ", components.TextOptionBold()),
 					container.NewHBox(
-						components.NewImmutableText("Max number of authors to include (0 = unlimited): ", components.TextOptionBold()),
-						maxAuthorsInput,
-						components.NewImmutableText("Author separator: ", components.TextOptionBold()),
-						authorSeparatorInput,
+						components.NewImmutableText("%TITLE%", components.TextOptionBold()),
+						canvas.NewText(" - Full book title as seen in library", color.Black),
+					),
+					container.NewHBox(
+						components.NewImmutableText("%SHORT_TITLE%", components.TextOptionBold()),
+						canvas.NewText(" - Book title up to the first occurance of ", color.Black),
+						components.NewImmutableText(":", components.TextOptionBold()),
+					),
+					components.NewImmutableText("%AUTHOR%", components.TextOptionBold()),
+					Indent(
+						container.NewHBox(
+							components.NewImmutableText("Max number of authors to include (0 = unlimited): ", components.TextOptionBold()),
+							maxAuthorsInput,
+							components.NewImmutableText("Author separator: ", components.TextOptionBold()),
+							authorSeparatorInput,
+						),
 					),
 				),
+				components.NewImmutableText("Preview: ", components.TextOptionBold()),
+				previewText,
 			),
-			components.NewImmutableText("Preview: ", components.TextOptionBold()),
-			previewText,
-		),
-		layout.NewSpacer(),
-		container.NewHBox(
 			layout.NewSpacer(),
-			widget.NewButton("Cancel", closeFunc),
-			widget.NewButton("Save", closeFunc),
+			container.NewHBox(
+				layout.NewSpacer(),
+				widget.NewButton("Cancel", closeFunc),
+				widget.NewButton("Save", closeFunc),
+			),
 		),
 	)
 }
