@@ -1,11 +1,8 @@
 package library
 
 import (
-	"encoding/json"
 	"fmt"
-	"image"
 	"image/color"
-	"image/jpeg"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -25,7 +22,6 @@ import (
 	"github.com/jvatic/audible-downloader/audible"
 	"github.com/jvatic/audible-downloader/gui/components"
 	"github.com/jvatic/audible-downloader/internal/common"
-	"github.com/jvatic/audible-downloader/internal/config"
 	"github.com/jvatic/audible-downloader/internal/downloader"
 	"github.com/jvatic/audible-downloader/internal/errgroup"
 	"github.com/jvatic/audible-downloader/internal/ffmpeg"
@@ -861,76 +857,4 @@ func Run(w fyne.Window, renderQueue chan func(w fyne.Window), actionQueue chan<-
 	}
 	<-done
 	return nil
-}
-
-func SaveLibrary(books []*audible.Book) error {
-	path := filepath.Join(config.Dir(), "books.json")
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	if err := json.NewEncoder(file).Encode(books); err != nil {
-		return fmt.Errorf("error encoding library to json: %s", err)
-	}
-	var wg sync.WaitGroup
-	for i, b := range books {
-		wg.Add(1)
-		go func(i int, img image.Image) {
-			defer wg.Done()
-			if err := SaveLibraryThumb(i, img); err != nil {
-				log.Errorf("error saving thumb %02d: %s", i, err)
-			}
-		}(i, b.ThumbImage)
-	}
-	wg.Wait()
-	return nil
-}
-
-func SaveLibraryThumb(i int, img image.Image) error {
-	path := filepath.Join(config.Dir(), fmt.Sprintf("%02d.jpeg", i))
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return jpeg.Encode(file, img, &jpeg.Options{Quality: 100})
-}
-
-func LoadLibrary() ([]*audible.Book, error) {
-	path := filepath.Join(config.Dir(), "books.json")
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var books []*audible.Book
-	if err := json.NewDecoder(file).Decode(&books); err != nil {
-		return nil, fmt.Errorf("error decoding library from json: %s", err)
-	}
-	var wg sync.WaitGroup
-	for i, b := range books {
-		wg.Add(1)
-		go func(i int, b *audible.Book) {
-			defer wg.Done()
-			img, err := LoadLibraryThumb(i)
-			if err != nil {
-				log.Errorf("error decoding library thumb %02d: %s", i, err)
-				return
-			}
-			b.ThumbImage = img
-		}(i, b)
-	}
-	wg.Wait()
-	return books, nil
-}
-
-func LoadLibraryThumb(i int) (image.Image, error) {
-	path := filepath.Join(config.Dir(), fmt.Sprintf("%02d.jpeg", i))
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	return jpeg.Decode(file)
 }

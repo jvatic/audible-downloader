@@ -44,21 +44,6 @@ func (c *Controller) Run(w fyne.Window) {
 
 	// main logic
 
-	// {
-	// 	// TODO: remove this block
-	// 	books, err := LoadLibrary()
-	// 	if err == nil {
-	// 		sort.Sort(audible.ByTitle(books))
-	// 		stateCh := NewLibState(&audible.Client{}, []byte{}, books)
-	// 		if err := Library(w, c.render, stateCh); err != nil {
-	// 			ShowFatalErrorDialog(c.render, err)
-	// 			return
-	// 		}
-	// 	} else {
-	// 		log.Warn(err)
-	// 	}
-	// }
-
 	client, err := signin.Run(c.render)
 	if err != nil {
 		ShowFatalErrorDialog(c.render, err)
@@ -79,12 +64,6 @@ func (c *Controller) Run(w fyne.Window) {
 		return
 	}
 	sort.Sort(audible.ByTitle(books))
-	{
-		// TODO: remove this block
-		if err := library.SaveLibrary(books); err != nil {
-			log.Warn(err)
-		}
-	}
 
 	stateCh := library.NewState(client, activationBytes, books)
 	if err := library.Run(w, c.render, stateCh); err != nil {
