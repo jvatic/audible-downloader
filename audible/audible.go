@@ -3,10 +3,11 @@ package audible
 import (
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 
-	"github.com/jvatic/audible-downloader/internal/cookiejar"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/publicsuffix"
 )
 
 type Option func(*Client)
@@ -74,8 +75,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		baseLicenseURL: "https://www.audible.com",
 	}
 
-	// persistent cookiejar that wraps net/http/cookiejar.Jar
-	jar, err := cookiejar.NewJar()
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		return nil, err
 	}

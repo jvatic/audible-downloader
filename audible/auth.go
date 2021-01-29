@@ -26,27 +26,8 @@ func (c *Client) Authenticate(ctx context.Context) error {
 
 	s := &authState{c: c}
 
-	// check if we're already authenticated via a cookie
-	steps := []authStep{
-		s.getLandingPage,
-		s.overrideIPRedirect,
-		s.confirmAuth,
-	}
-
-	var err error
-	for _, step := range steps {
-		if err = step(ctx); err != nil {
-			break
-		}
-	}
-
-	if err == nil {
-		// we're authenticated
-		return nil
-	}
-
 	// we're not authenticated, so run through the full signin process
-	steps = []authStep{
+	steps := []authStep{
 		s.getLandingPage,
 		s.overrideIPRedirect,
 		s.getSigninPage,
