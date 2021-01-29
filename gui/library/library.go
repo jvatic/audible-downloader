@@ -1,4 +1,4 @@
-package main
+package library
 
 import (
 	"encoding/json"
@@ -34,7 +34,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type libState struct {
+type Action = func(s *State)
+
+type State struct {
 	Client *audible.Client
 
 	// Data
@@ -70,293 +72,8 @@ type libState struct {
 	bookProgressBarChs []chan<- components.ProgressBarAction
 }
 
-// Data
-
-func GetActivationBytes(stateCh chan<- LibStateAction) []byte {
-	activationBytesCh := make(chan []byte)
-	defer close(activationBytesCh)
-	stateCh <- func(s *libState) {
-		activationBytesCh <- s.activationBytes
-	}
-	return <-activationBytesCh
-}
-
-func (s *libState) SetNumSelected(num int) {
-	s.numSelected = num
-	s.handleNumSelectedChange(num)
-}
-
-func (s *libState) handleNumSelectedChange(num int) {
-	s.downloadBtnCh <- components.ButtonActionSetText(s.DownloadBtnText())
-
-	if num > 0 && s.selectedDirURI != nil {
-		s.downloadBtnCh <- components.ButtonActionEnable()
-	} else {
-		s.downloadBtnCh <- components.ButtonActionDisable()
-	}
-
-	if num == len(s.books)-len(s.downloadedBooks) && num > 0 {
-		s.controlCheckboxCh <- components.CheckboxActionSetChecked(true)
-	} else {
-		s.controlCheckboxCh <- components.CheckboxActionSetChecked(false)
-	}
-}
-
-func GetSelectedDirPath(stateCh chan<- LibStateAction) string {
-	dirPathCh := make(chan string)
-	defer close(dirPathCh)
-	stateCh <- func(s *libState) {
-		dirPathCh <- s.selectedDirPath
-	}
-	return <-dirPathCh
-}
-
-func (s *libState) SetSelectedDirPath(v string) {
-	s.selectedDirPathMtx.Lock()
-	defer s.selectedDirPathMtx.Unlock()
-	s.selectedDirPath = v
-}
-
-func (s *libState) GetBooks() []*audible.Book {
-	s.booksMtx.RLock()
-	defer s.booksMtx.RUnlock()
-	return s.books
-}
-
-func (s *libState) GetBooksLen() int {
-	s.booksMtx.RLock()
-	defer s.booksMtx.RUnlock()
-	return len(s.books)
-}
-
-func (s *libState) GetBook(index int) *audible.Book {
-	s.booksMtx.RLock()
-	defer s.booksMtx.RUnlock()
-	if index >= len(s.books) {
-		return nil
-	}
-	return s.books[index]
-}
-
-func (s *libState) SetBookLocalPath(index int, localPath string) {
-	s.booksMtx.Lock()
-	defer s.booksMtx.Unlock()
-	s.books[index].LocalPath = localPath
-}
-
-func (s *libState) GetBookIndicesByID() map[string]int {
-	s.bookIndicesByIDMtx.RLock()
-	defer s.bookIndicesByIDMtx.RUnlock()
-	return s.bookIndicesByID
-}
-
-func (s *libState) GetBookIndexForID(id string) (int, bool) {
-	index, ok := s.bookIndicesByID[id]
-	return index, ok
-}
-
-func (s *libState) SetBookIndexForID(id string, index int) {
-	s.bookIndicesByID[id] = index
-}
-
-func LSAMarkBookDownloaded(index int, downloaded bool) LibStateAction {
-	return func(s *libState) {
-		s.MarkBookDownloaded(index, downloaded)
-	}
-}
-
-func LSASetBookCheckboxCh(index int, ch chan<- components.CheckboxAction) LibStateAction {
-	return func(s *libState) {
-		s.bookCheckboxChs[index] = ch
-	}
-}
-
-func LSABookCheckboxAction(index int, action components.CheckboxAction) LibStateAction {
-	return func(s *libState) {
-		s.bookCheckboxChs[index] <- action
-	}
-}
-
-func (s *libState) MarkBookDownloaded(index int, downloaded bool) {
-	if downloaded {
-		b := s.books[index]
-		if b == nil {
-			return
-		}
-		s.downloadedBookIndices[index] = struct{}{}
-	} else {
-		delete(s.downloadedBookIndices, index)
-	}
-}
-
-func (s *libState) IsBookDownloaded(index int) bool {
-	s.downloadedBookIndicesMtx.Lock()
-	defer s.downloadedBookIndicesMtx.Unlock()
-	_, ok := s.downloadedBookIndices[index]
-	return ok
-}
-
-func (s *libState) GetDownloadedBooks() []*audible.Book {
-	s.downloadedBookIndicesMtx.RLock()
-	defer s.downloadedBookIndicesMtx.RUnlock()
-	books := make([]*audible.Book, 0, len(s.downloadedBookIndices))
-	for i := range s.downloadedBookIndices {
-		books = append(books, s.GetBook(i))
-	}
-	sort.Sort(audible.ByTitle(books))
-	return books
-}
-
-func GetDstPath(stateCh chan<- LibStateAction, b *audible.Book) string {
-	dstPathCh := make(chan string)
-	defer close(dstPathCh)
-	stateCh <- func(s *libState) {
-		if s.getDstPath == nil {
-			dstPathCh <- ""
-		} else {
-			dstPathCh <- s.getDstPath(b)
-		}
-	}
-	return <-dstPathCh
-}
-
-// UI
-
-type LibStateAction = func(s *libState)
-
-func LSABookProgressBarAction(index int, action components.ProgressBarAction) LibStateAction {
-	return func(s *libState) {
-		pbCh := s.bookProgressBarChs[index]
-		pbCh <- action
-	}
-}
-
-func LSAProgressBarAction(action components.ProgressBarAction) LibStateAction {
-	return func(s *libState) {
-		s.progressBarCh <- action
-	}
-}
-
-func LSABookProgressBarMaybeShow(index int) LibStateAction {
-	return func(s *libState) {
-		cCh := s.bookCheckboxChs[index]
-		pbCh := s.bookProgressBarChs[index]
-		if components.IsProgressBarHidden(pbCh) && components.IsCheckboxChecked(cCh) {
-			pbCh <- components.ProgressBarActionShow()
-		}
-	}
-}
-
-func LSASetBookStatusText(index int, text string) LibStateAction {
-	return func(s *libState) {
-		s.bookStatusChs[index] <- text
-	}
-}
-
-func IsBookSelected(stateCh chan<- LibStateAction, index int) bool {
-	valCh := make(chan bool)
-	stateCh <- func(s *libState) {
-		valCh <- components.IsCheckboxChecked(s.bookCheckboxChs[index])
-	}
-	selected := <-valCh
-	close(valCh)
-	return selected
-}
-
-func IsBookDownloaded(stateCh chan<- LibStateAction, index int) bool {
-	valCh := make(chan bool)
-	stateCh <- func(s *libState) {
-		valCh <- s.IsBookDownloaded(index)
-	}
-	downloaded := <-valCh
-	close(valCh)
-	return downloaded
-}
-
-func LSASetSelectedDir(uri fyne.ListableURI) LibStateAction {
-	return func(s *libState) {
-		s.selectedDirURI = uri
-		s.selectedDirPath = PathFromFyneURI(uri)
-		defer func(text string) { s.dirPickerBtnCh <- components.ButtonActionSetText(text) }(s.DirPickerBtnText())
-
-		s.downloadedBookIndices = make(map[int]struct{})
-
-		// we assume any disabled checkbox was disabled due to being downloaded, so
-		// re-enable and select any disabled checkbox and mark it's book as not
-		// downloaded unless/until we determine otherwise below
-		n := s.numSelected
-		for i := 0; i < len(s.books); i++ {
-			ch := s.bookCheckboxChs[i]
-			if ch != nil && components.IsCheckboxDisabled(ch) {
-				ch <- components.CheckboxActionSetChecked(true)
-				ch <- components.CheckboxActionEnable()
-				n++
-			}
-			s.books[i].LocalPath = ""
-			s.MarkBookDownloaded(i, false)
-			s.bookStatusChs[i] <- BookStatusText(s.books[i])
-		}
-		s.SetNumSelected(n)
-
-		if uri == nil {
-			s.dirCreateBtnCh <- components.ButtonActionDisable()
-		} else {
-			s.dirCreateBtnCh <- components.ButtonActionEnable()
-
-			// scan selected dir for audiobooks
-			// and mark any matching books as downloaded and disable their checkbox
-			localBooks, err := common.ListDownloadedBooks(s.selectedDirPath)
-			if err != nil {
-				log.Errorf("Error discovering downloaded books: %s", err)
-			}
-			n := s.numSelected
-			for _, b := range localBooks {
-				if bi, ok := s.GetBookIndexForID(b.ID()); ok {
-					s.books[bi].LocalPath = b.LocalPath
-					ext := filepath.Ext(b.LocalPath)
-					if ext != ".mp4" {
-						// we're assuming any .mp4 found is downloaded
-						continue
-					}
-					s.MarkBookDownloaded(bi, true)
-					if bi < len(s.bookStatusChs) {
-						s.bookStatusChs[bi] <- BookStatusText(b)
-					}
-					if bi < len(s.bookCheckboxChs) {
-						ch := s.bookCheckboxChs[bi]
-						if components.IsCheckboxChecked(ch) {
-							n--
-						}
-						ch <- components.CheckboxActionSetChecked(false)
-						ch <- components.CheckboxActionDisable()
-					}
-				}
-			}
-			s.SetNumSelected(n)
-		}
-	}
-}
-
-func LSASetDownloading(isDownloading bool) LibStateAction {
-	return func(s *libState) {
-		if isDownloading {
-			s.dirPickerBtnCh <- components.ButtonActionHide()
-			s.dirEntryBtnCh <- components.ButtonActionHide()
-			s.dirCreateBtnCh <- components.ButtonActionHide()
-			s.downloadBtnCh <- components.ButtonActionHide()
-			s.progressBarCh <- components.ProgressBarActionShow()
-		} else {
-			s.dirPickerBtnCh <- components.ButtonActionShow()
-			s.dirEntryBtnCh <- components.ButtonActionShow()
-			s.dirCreateBtnCh <- components.ButtonActionShow()
-			s.downloadBtnCh <- components.ButtonActionShow()
-			s.progressBarCh <- components.ProgressBarActionHide()
-		}
-	}
-}
-
-func NewLibState(client *audible.Client, activationBytes []byte, books []*audible.Book) chan<- LibStateAction {
-	state := &libState{
+func NewState(client *audible.Client, activationBytes []byte, books []*audible.Book) chan<- Action {
+	state := &State{
 		Client: client,
 
 		// Data
@@ -385,11 +102,11 @@ func NewLibState(client *audible.Client, activationBytes []byte, books []*audibl
 		state.SetBookIndexForID(b.ID(), i)
 	}
 
-	stateCh := make(chan LibStateAction)
+	actionQueue := make(chan Action)
 
 	go func() {
 		for {
-			fn, ok := <-stateCh
+			fn, ok := <-actionQueue
 			if !ok {
 				return
 			}
@@ -397,65 +114,330 @@ func NewLibState(client *audible.Client, activationBytes []byte, books []*audibl
 		}
 	}()
 
-	return stateCh
+	return actionQueue
 }
 
-func (s *libState) DirPickerBtnText() string {
+func (s *State) SetNumSelected(num int) {
+	s.numSelected = num
+	s.handleNumSelectedChange(num)
+}
+
+func (s *State) handleNumSelectedChange(num int) {
+	s.downloadBtnCh <- components.ButtonActionSetText(s.GetDownloadBtnText())
+
+	if num > 0 && s.selectedDirURI != nil {
+		s.downloadBtnCh <- components.ButtonActionEnable()
+	} else {
+		s.downloadBtnCh <- components.ButtonActionDisable()
+	}
+
+	if num == len(s.books)-len(s.downloadedBooks) && num > 0 {
+		s.controlCheckboxCh <- components.CheckboxActionSetChecked(true)
+	} else {
+		s.controlCheckboxCh <- components.CheckboxActionSetChecked(false)
+	}
+}
+
+func (s *State) SetSelectedDirPath(v string) {
+	s.selectedDirPathMtx.Lock()
+	defer s.selectedDirPathMtx.Unlock()
+	s.selectedDirPath = v
+}
+
+func (s *State) SetBookLocalPath(index int, localPath string) {
+	s.booksMtx.Lock()
+	defer s.booksMtx.Unlock()
+	s.books[index].LocalPath = localPath
+}
+
+func (s *State) SetBookIndexForID(id string, index int) {
+	s.bookIndicesByID[id] = index
+}
+
+func (s *State) SetBookDownloaded(index int, downloaded bool) {
+	if downloaded {
+		b := s.books[index]
+		if b == nil {
+			return
+		}
+		s.downloadedBookIndices[index] = struct{}{}
+	} else {
+		delete(s.downloadedBookIndices, index)
+	}
+}
+
+func SetBookDownloaded(index int, downloaded bool) Action {
+	return func(s *State) {
+		s.SetBookDownloaded(index, downloaded)
+	}
+}
+
+func SetBookCheckboxCh(index int, ch chan<- components.CheckboxAction) Action {
+	return func(s *State) {
+		s.bookCheckboxChs[index] = ch
+	}
+}
+
+func SetBookStatusText(index int, text string) Action {
+	return func(s *State) {
+		s.bookStatusChs[index] <- text
+	}
+}
+
+func SetSelectedDir(uri fyne.ListableURI) Action {
+	return func(s *State) {
+		s.selectedDirURI = uri
+		s.selectedDirPath = PathFromFyneURI(uri)
+		defer func(text string) { s.dirPickerBtnCh <- components.ButtonActionSetText(text) }(s.GetDirPickerBtnText())
+
+		s.downloadedBookIndices = make(map[int]struct{})
+
+		// we assume any disabled checkbox was disabled due to being downloaded, so
+		// re-enable and select any disabled checkbox and mark it's book as not
+		// downloaded unless/until we determine otherwise below
+		n := s.numSelected
+		for i := 0; i < len(s.books); i++ {
+			ch := s.bookCheckboxChs[i]
+			if ch != nil && components.IsCheckboxDisabled(ch) {
+				ch <- components.CheckboxActionSetChecked(true)
+				ch <- components.CheckboxActionEnable()
+				n++
+			}
+			s.books[i].LocalPath = ""
+			s.SetBookDownloaded(i, false)
+			s.bookStatusChs[i] <- BookStatusText(s.books[i])
+		}
+		s.SetNumSelected(n)
+
+		if uri == nil {
+			s.dirCreateBtnCh <- components.ButtonActionDisable()
+		} else {
+			s.dirCreateBtnCh <- components.ButtonActionEnable()
+
+			// scan selected dir for audiobooks
+			// and mark any matching books as downloaded and disable their checkbox
+			localBooks, err := common.ListDownloadedBooks(s.selectedDirPath)
+			if err != nil {
+				log.Errorf("Error discovering downloaded books: %s", err)
+			}
+			n := s.numSelected
+			for _, b := range localBooks {
+				if bi, ok := s.GetBookIndexForID(b.ID()); ok {
+					s.books[bi].LocalPath = b.LocalPath
+					ext := filepath.Ext(b.LocalPath)
+					if ext != ".mp4" {
+						// we're assuming any .mp4 found is downloaded
+						continue
+					}
+					s.SetBookDownloaded(bi, true)
+					if bi < len(s.bookStatusChs) {
+						s.bookStatusChs[bi] <- BookStatusText(b)
+					}
+					if bi < len(s.bookCheckboxChs) {
+						ch := s.bookCheckboxChs[bi]
+						if components.IsCheckboxChecked(ch) {
+							n--
+						}
+						ch <- components.CheckboxActionSetChecked(false)
+						ch <- components.CheckboxActionDisable()
+					}
+				}
+			}
+			s.SetNumSelected(n)
+		}
+	}
+}
+
+func SetDownloading(isDownloading bool) Action {
+	return func(s *State) {
+		if isDownloading {
+			s.dirPickerBtnCh <- components.ButtonActionHide()
+			s.dirEntryBtnCh <- components.ButtonActionHide()
+			s.dirCreateBtnCh <- components.ButtonActionHide()
+			s.downloadBtnCh <- components.ButtonActionHide()
+			s.progressBarCh <- components.ProgressBarActionShow()
+		} else {
+			s.dirPickerBtnCh <- components.ButtonActionShow()
+			s.dirEntryBtnCh <- components.ButtonActionShow()
+			s.dirCreateBtnCh <- components.ButtonActionShow()
+			s.downloadBtnCh <- components.ButtonActionShow()
+			s.progressBarCh <- components.ProgressBarActionHide()
+		}
+	}
+}
+
+func (s *State) GetBooks() []*audible.Book {
+	s.booksMtx.RLock()
+	defer s.booksMtx.RUnlock()
+	return s.books
+}
+
+func (s *State) GetBooksLen() int {
+	s.booksMtx.RLock()
+	defer s.booksMtx.RUnlock()
+	return len(s.books)
+}
+
+func (s *State) GetBook(index int) *audible.Book {
+	s.booksMtx.RLock()
+	defer s.booksMtx.RUnlock()
+	if index >= len(s.books) {
+		return nil
+	}
+	return s.books[index]
+}
+
+func (s *State) GetBookIndicesByID() map[string]int {
+	s.bookIndicesByIDMtx.RLock()
+	defer s.bookIndicesByIDMtx.RUnlock()
+	return s.bookIndicesByID
+}
+
+func (s *State) GetBookIndexForID(id string) (int, bool) {
+	index, ok := s.bookIndicesByID[id]
+	return index, ok
+}
+
+func (s *State) GetDownloadedBooks() []*audible.Book {
+	s.downloadedBookIndicesMtx.RLock()
+	defer s.downloadedBookIndicesMtx.RUnlock()
+	books := make([]*audible.Book, 0, len(s.downloadedBookIndices))
+	for i := range s.downloadedBookIndices {
+		books = append(books, s.GetBook(i))
+	}
+	sort.Sort(audible.ByTitle(books))
+	return books
+}
+
+func (s *State) GetDirPickerBtnText() string {
 	if s.selectedDirURI != nil {
 		return FormatFilePath(s.selectedDirPath, 300)
 	}
 	return "Select output folder"
 }
 
-func GetDirPickerBtnText(stateCh chan<- LibStateAction) string {
+func (s *State) IsBookDownloaded(index int) bool {
+	s.downloadedBookIndicesMtx.Lock()
+	defer s.downloadedBookIndicesMtx.Unlock()
+	_, ok := s.downloadedBookIndices[index]
+	return ok
+}
+
+func (s *State) GetDownloadBtnText() string {
+	return fmt.Sprintf("Download Selected (%d)", s.numSelected)
+}
+
+func GetActivationBytes(actionQueue chan<- Action) []byte {
+	val := make(chan []byte)
+	defer close(val)
+	actionQueue <- func(s *State) {
+		val <- s.activationBytes
+	}
+	return <-val
+}
+
+func GetSelectedDirPath(actionQueue chan<- Action) string {
+	val := make(chan string)
+	defer close(val)
+	actionQueue <- func(s *State) {
+		val <- s.selectedDirPath
+	}
+	return <-val
+}
+
+func GetDstPath(actionQueue chan<- Action, b *audible.Book) string {
+	val := make(chan string)
+	defer close(val)
+	actionQueue <- func(s *State) {
+		if s.getDstPath == nil {
+			val <- ""
+		} else {
+			val <- s.getDstPath(b)
+		}
+	}
+	return <-val
+}
+
+func GetDirPickerBtnText(actionQueue chan<- Action) string {
 	textCh := make(chan string)
 	defer close(textCh)
-	stateCh <- func(s *libState) {
-		textCh <- s.DirPickerBtnText()
+	actionQueue <- func(s *State) {
+		textCh <- s.GetDirPickerBtnText()
 	}
 	return <-textCh
 }
 
-func (s *libState) DownloadBtnText() string {
-	return fmt.Sprintf("Download Selected (%d)", s.numSelected)
-}
-
-func DownloadBtnText(stateCh chan<- LibStateAction) string {
+func GetDownloadBtnText(actionQueue chan<- Action) string {
 	valCh := make(chan string)
-	stateCh <- func(s *libState) {
-		valCh <- s.DownloadBtnText()
+	actionQueue <- func(s *State) {
+		valCh <- s.GetDownloadBtnText()
 	}
 	val := <-valCh
 	close(valCh)
 	return val
 }
 
-func BookStatusText(b *audible.Book) string {
-	if b.LocalPath == "" {
-		return "Status: Not Downloaded"
-	}
-	return "Status: Downloaded"
-}
-
-func PathFromFyneURI(uri fyne.ListableURI) string {
-	if uri == nil {
-		return ""
-	}
-	return filepath.Join(strings.SplitAfter(strings.TrimPrefix(uri.String(), "file://"), "/")...)
-}
-
-func GetCookieJar(stateCh chan<- LibStateAction) http.CookieJar {
+func GetCookieJar(actionQueue chan<- Action) http.CookieJar {
 	jarCh := make(chan http.CookieJar)
 	defer close(jarCh)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		jarCh <- s.Client.Jar
 	}
 	return <-jarCh
 }
 
-func StartDownloads(stateCh chan<- LibStateAction) error {
-	stateCh <- LSASetDownloading(true)
-	defer func() { stateCh <- LSASetDownloading(false) }()
+func IsBookSelected(actionQueue chan<- Action, index int) bool {
+	valCh := make(chan bool)
+	actionQueue <- func(s *State) {
+		valCh <- components.IsCheckboxChecked(s.bookCheckboxChs[index])
+	}
+	selected := <-valCh
+	close(valCh)
+	return selected
+}
+
+func IsBookDownloaded(actionQueue chan<- Action, index int) bool {
+	valCh := make(chan bool)
+	actionQueue <- func(s *State) {
+		valCh <- s.IsBookDownloaded(index)
+	}
+	downloaded := <-valCh
+	close(valCh)
+	return downloaded
+}
+
+func BookCheckboxAction(index int, action components.CheckboxAction) Action {
+	return func(s *State) {
+		s.bookCheckboxChs[index] <- action
+	}
+}
+
+func BookProgressBarAction(index int, action components.ProgressBarAction) Action {
+	return func(s *State) {
+		pbCh := s.bookProgressBarChs[index]
+		pbCh <- action
+	}
+}
+
+func BookProgressBarMaybeShow(index int) Action {
+	return func(s *State) {
+		cCh := s.bookCheckboxChs[index]
+		pbCh := s.bookProgressBarChs[index]
+		if components.IsProgressBarHidden(pbCh) && components.IsCheckboxChecked(cCh) {
+			pbCh <- components.ProgressBarActionShow()
+		}
+	}
+}
+
+func MainProgressBarAction(action components.ProgressBarAction) Action {
+	return func(s *State) {
+		s.progressBarCh <- action
+	}
+}
+
+func StartDownloads(actionQueue chan<- Action) error {
+	actionQueue <- SetDownloading(true)
+	defer func() { actionQueue <- SetDownloading(false) }()
 
 	dlm, err := downloader.NewDownloader()
 	if err != nil {
@@ -465,7 +447,7 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 	eg := errgroup.NewErrGroup()
 
 	var books []*audible.Book
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		books = s.books
 	}
 
@@ -476,10 +458,10 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 		pg.Add(bpg[i])
 	}
 
-	client := &http.Client{Jar: GetCookieJar(stateCh)}
+	client := &http.Client{Jar: GetCookieJar(actionQueue)}
 
 	downloadBook := func(index int, book *audible.Book, bookProgress progress.ProgressComposite) error {
-		dstPath := filepath.Join(GetSelectedDirPath(stateCh), GetDstPath(stateCh, book))
+		dstPath := filepath.Join(GetSelectedDirPath(actionQueue), GetDstPath(actionQueue, book))
 		dir := filepath.Dir(dstPath)
 		os.MkdirAll(dir, 0755)
 
@@ -509,7 +491,7 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 							return true
 						}),
 						downloader.DownloadOptionProgress(func(totalBytes int64, completedBytes int64) {
-							stateCh <- LSASetBookStatusText(index, "Downloading...")
+							actionQueue <- SetBookStatusText(index, "Downloading...")
 							dlProgress.SetTotal(totalBytes)
 							dlProgress.SetCurrent(completedBytes)
 						}),
@@ -534,9 +516,9 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 						if err := ffmpeg.DecryptAudioBook(
 							ffmpeg.InputPath(outPath),
 							ffmpeg.OutputPath(utils.SwapFileExt(outPath, ".mp4")),
-							ffmpeg.ActivationBytes(string(GetActivationBytes(stateCh))),
+							ffmpeg.ActivationBytes(string(GetActivationBytes(actionQueue))),
 							ffmpeg.Progress(func(totalBytes int64, completedBytes int64) {
-								stateCh <- LSASetBookStatusText(index, "Decrypting...")
+								actionQueue <- SetBookStatusText(index, "Decrypting...")
 								dcProgress.SetTotal(totalBytes)
 								dcProgress.SetCurrent(completedBytes)
 							}),
@@ -568,27 +550,27 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 
 	dlm.Start()
 	for i, book := range books {
-		if IsBookSelected(stateCh, i) {
+		if IsBookSelected(actionQueue, i) {
 			func(i int, book *audible.Book, pg progress.ProgressComposite) {
 				eg.Add(func() error {
-					stateCh <- LSASetBookStatusText(i, "Pending...")
+					actionQueue <- SetBookStatusText(i, "Pending...")
 					if err := downloadBook(i, book, pg); err != nil {
-						stateCh <- LSASetBookStatusText(i, "An error occured while downloading")
+						actionQueue <- SetBookStatusText(i, "An error occured while downloading")
 						return err
 					}
-					stateCh <- LSABookCheckboxAction(i, components.CheckboxActionSetChecked(false))
-					stateCh <- LSABookCheckboxAction(i, components.CheckboxActionDisable())
-					stateCh <- LSAMarkBookDownloaded(i, true)
-					stateCh <- LSASetBookStatusText(i, "Downloaded")
-					stateCh <- LSABookProgressBarAction(i, components.ProgressBarActionHide())
+					actionQueue <- BookCheckboxAction(i, components.CheckboxActionSetChecked(false))
+					actionQueue <- BookCheckboxAction(i, components.CheckboxActionDisable())
+					actionQueue <- SetBookDownloaded(i, true)
+					actionQueue <- SetBookStatusText(i, "Downloaded")
+					actionQueue <- BookProgressBarAction(i, components.ProgressBarActionHide())
 					return nil
 				})
 			}(i, book, bpg[i])
-		} else if IsBookDownloaded(stateCh, i) {
-			stateCh <- LSABookCheckboxAction(i, components.CheckboxActionSetChecked(false))
-			stateCh <- LSABookCheckboxAction(i, components.CheckboxActionDisable())
-			stateCh <- LSASetBookStatusText(i, BookStatusText(book))
-			stateCh <- LSABookProgressBarAction(i, components.ProgressBarActionHide())
+		} else if IsBookDownloaded(actionQueue, i) {
+			actionQueue <- BookCheckboxAction(i, components.CheckboxActionSetChecked(false))
+			actionQueue <- BookCheckboxAction(i, components.CheckboxActionDisable())
+			actionQueue <- SetBookStatusText(i, BookStatusText(book))
+			actionQueue <- BookProgressBarAction(i, components.ProgressBarActionHide())
 		}
 	}
 
@@ -610,21 +592,21 @@ func StartDownloads(stateCh chan<- LibStateAction) error {
 			return nil
 		case <-time.After(time.Second):
 			for i, p := range bpg {
-				stateCh <- LSABookProgressBarAction(i, components.ProgressBarActionSetValue(p.GetPercent()))
-				stateCh <- LSABookProgressBarMaybeShow(i)
+				actionQueue <- BookProgressBarAction(i, components.ProgressBarActionSetValue(p.GetPercent()))
+				actionQueue <- BookProgressBarMaybeShow(i)
 			}
-			stateCh <- LSAProgressBarAction(components.ProgressBarActionSetValue(pg.GetPercent()))
+			actionQueue <- MainProgressBarAction(components.ProgressBarActionSetValue(pg.GetPercent()))
 		}
 	}
 }
 
-func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<- LibStateAction) error {
+func Run(w fyne.Window, renderQueue chan func(w fyne.Window), actionQueue chan<- Action) error {
 	var mainUI fyne.CanvasObject
 	var configUI fyne.CanvasObject
 	done := make(chan struct{})
 
 	dirPickerBtn, dirPickerBtnCh := components.NewButton(renderQueue,
-		GetDirPickerBtnText(stateCh),
+		GetDirPickerBtnText(actionQueue),
 		components.ButtonOptionOnTapped(func() {
 			d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 				if err != nil {
@@ -634,12 +616,12 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 				if uri == nil {
 					return
 				}
-				stateCh <- LSASetSelectedDir(uri)
+				actionQueue <- SetSelectedDir(uri)
 			}, w)
 			d.Show()
 		}),
 	)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.dirPickerBtnCh = dirPickerBtnCh
 	}
 
@@ -656,20 +638,20 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 					dialog.ShowError(err, w)
 					return
 				}
-				stateCh <- LSASetSelectedDir(uri)
+				actionQueue <- SetSelectedDir(uri)
 			}, w)
 			d.Show()
 		}),
 	)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.dirEntryBtnCh = dirEntryBtnCh
 	}
 
 	dirCreateBtn, dirCreateBtnCh := components.NewButton(renderQueue, "",
 		components.ButtonOptionIcon(theme.FolderNewIcon()),
 		components.ButtonOptionOnTapped(func() {
-			d := dialog.NewEntryDialog("Create folder", fmt.Sprintf("%s%s", FormatFilePath(GetSelectedDirPath(stateCh), 200), string(filepath.Separator)), func(str string) {
-				path := filepath.Join(GetSelectedDirPath(stateCh), str)
+			d := dialog.NewEntryDialog("Create folder", fmt.Sprintf("%s%s", FormatFilePath(GetSelectedDirPath(actionQueue), 200), string(filepath.Separator)), func(str string) {
+				path := filepath.Join(GetSelectedDirPath(actionQueue), str)
 				if err := os.Mkdir(path, 0755); err != nil {
 					log.Error(err)
 					dialog.ShowError(err, w)
@@ -681,17 +663,17 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 					dialog.ShowError(err, w)
 					return
 				}
-				stateCh <- LSASetSelectedDir(uri)
+				actionQueue <- SetSelectedDir(uri)
 			}, w)
 			d.Show()
 		}),
 	)
 	dirCreateBtnCh <- components.ButtonActionDisable()
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.dirCreateBtnCh = dirCreateBtnCh
 	}
 
-	configUI = BuildConfigUI(renderQueue, stateCh, func() {
+	configUI = buildConfigUI(renderQueue, actionQueue, func() {
 		// called when config UI closed
 		renderQueue <- func(w fyne.Window) {
 			w.SetContent(mainUI)
@@ -705,31 +687,31 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 			}
 		}),
 	)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.configBtnCh = configBtnCh
 	}
 
 	downloadBtn, downloadBtnCh := components.NewButton(renderQueue,
-		DownloadBtnText(stateCh),
+		GetDownloadBtnText(actionQueue),
 		components.ButtonOptionIcon(theme.DownloadIcon()),
 		components.ButtonOptionOnTapped(func() {
-			go StartDownloads(stateCh)
+			go StartDownloads(actionQueue)
 		}),
 	)
 	downloadBtnCh <- components.ButtonActionDisable()
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.downloadBtnCh = downloadBtnCh
 	}
 
 	progressBar, progressBarCh := components.NewProgressBar(renderQueue)
 	progressBarCh <- components.ProgressBarActionHide()
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.progressBarCh = progressBarCh
 	}
 
 	controlCheckbox, controlCheckboxCh := components.NewCheckbox(renderQueue, "",
 		components.CheckboxOptionOnChange(func(checked bool) {
-			stateCh <- func(s *libState) {
+			actionQueue <- func(s *State) {
 				n := 0
 				for _, ch := range s.bookCheckboxChs {
 					if components.IsCheckboxDisabled(ch) {
@@ -747,12 +729,12 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		}),
 	)
 	controlCheckboxCh <- components.CheckboxActionSetChecked(true)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		s.controlCheckboxCh = controlCheckboxCh
 	}
 
 	booksCh := make(chan []*audible.Book)
-	stateCh <- func(s *libState) {
+	actionQueue <- func(s *State) {
 		booksCh <- s.books
 	}
 	books := <-booksCh
@@ -763,18 +745,18 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 		checkbox, checkboxCh := components.NewCheckbox(renderQueue, "",
 			components.CheckboxOptionOnChange(func(checked bool) {
 				if checked {
-					stateCh <- func(s *libState) {
+					actionQueue <- func(s *State) {
 						s.SetNumSelected(s.numSelected + 1)
 					}
 				} else {
-					stateCh <- func(s *libState) {
+					actionQueue <- func(s *State) {
 						s.SetNumSelected(s.numSelected - 1)
 					}
 				}
 			}),
 		)
 		checkboxCh <- components.CheckboxActionSetChecked(true)
-		stateCh <- LSASetBookCheckboxCh(i, checkboxCh)
+		actionQueue <- SetBookCheckboxCh(i, checkboxCh)
 		bookCheckboxes = append(bookCheckboxes, checkbox)
 	}
 
@@ -795,13 +777,13 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 				}
 
 				statusText, statusTextCh := components.NewText(renderQueue, BookStatusText(b))
-				stateCh <- func(s *libState) {
+				actionQueue <- func(s *State) {
 					s.bookStatusChs[i] = statusTextCh
 				}
 
 				pb, pbCh := components.NewProgressBar(renderQueue)
 				pbCh <- components.ProgressBarActionHide()
-				stateCh <- func(s *libState) {
+				actionQueue <- func(s *State) {
 					s.bookProgressBarChs[i] = pbCh
 				}
 
@@ -879,154 +861,6 @@ func Library(w fyne.Window, renderQueue chan func(w fyne.Window), stateCh chan<-
 	}
 	<-done
 	return nil
-}
-
-func BuildConfigUI(renderQueue chan<- func(w fyne.Window), stateCh chan<- LibStateAction, closeFunc func()) fyne.CanvasObject {
-	var pathTemplateMtx sync.RWMutex
-	pathTemplate := common.DefaultPathTemplate
-	setPathTemplate := func(text string) {
-		pathTemplateMtx.Lock()
-		defer pathTemplateMtx.Unlock()
-		pathTemplate = text
-	}
-
-	getPathTemplate := func() string {
-		pathTemplateMtx.RLock()
-		defer pathTemplateMtx.RUnlock()
-		return pathTemplate
-	}
-
-	var maxAuthorsMtx sync.RWMutex
-	maxAuthors := 1
-	setMaxAuthors := func(num int) {
-		maxAuthorsMtx.Lock()
-		defer maxAuthorsMtx.Unlock()
-		maxAuthors = num
-	}
-
-	getMaxAuthors := func() int {
-		maxAuthorsMtx.RLock()
-		defer maxAuthorsMtx.RUnlock()
-		return maxAuthors
-	}
-
-	var authorSeparatorMtx sync.RWMutex
-	authorSeparator := ", "
-	setAuthorSeparator := func(sep string) {
-		authorSeparatorMtx.Lock()
-		defer authorSeparatorMtx.Unlock()
-		authorSeparator = sep
-	}
-
-	getAuthorSeparator := func() string {
-		authorSeparatorMtx.RLock()
-		defer authorSeparatorMtx.RUnlock()
-		return authorSeparator
-	}
-
-	updatePathTemplateSub := func() {
-		stateCh <- func(s *libState) {
-			authorSeparatorMtx.RLock()
-			defer authorSeparatorMtx.RUnlock()
-			maxAuthorsMtx.RLock()
-			defer maxAuthorsMtx.RUnlock()
-			s.getDstPath = common.CompilePathTemplate(
-				getPathTemplate(),
-				common.PathTemplateTitle(),
-				common.PathTemplateShortTitle(),
-				common.PathTemplateAuthor(maxAuthors, authorSeparator),
-			)
-		}
-	}
-
-	previewText, previewTextCh := components.NewText(renderQueue, "")
-	updatePreviewText := func() {
-		previewTextCh <- GetDstPath(stateCh, &common.SampleBook)
-	}
-	updatePreviewText()
-
-	pathTemplateInput, pathTemplateInputInCh, pathTemplateInputOutCh := components.NewEntry(renderQueue)
-	pathTemplateInputInCh <- getPathTemplate()
-	go func() {
-		for {
-			text, ok := <-pathTemplateInputOutCh
-			if !ok {
-				return
-			}
-			setPathTemplate(text)
-			updatePathTemplateSub()
-			updatePreviewText()
-		}
-	}()
-
-	maxAuthorsInput, maxAuthorsInputInCh, maxAuthorsInputOutCh := components.NewIntEntry(renderQueue)
-	maxAuthorsInputInCh <- getMaxAuthors()
-	go func() {
-		for {
-			num, ok := <-maxAuthorsInputOutCh
-			if !ok {
-				return
-			}
-			setMaxAuthors(num)
-			updatePathTemplateSub()
-			updatePreviewText()
-		}
-	}()
-
-	authorSeparatorInput, authorSeparatorInputInCh, authorSeparatorInputOutCh := components.NewEntry(renderQueue)
-	authorSeparatorInputInCh <- getAuthorSeparator()
-	go func() {
-		for {
-			sep, ok := <-authorSeparatorInputOutCh
-			if !ok {
-				return
-			}
-			setAuthorSeparator(sep)
-			updatePathTemplateSub()
-			updatePreviewText()
-		}
-	}()
-
-	return components.ApplyTemplate(
-		container.NewVBox(
-			container.NewCenter(
-				components.NewImmutableText("Download Settings", components.TextOptionHeading(components.H1)),
-			),
-			container.NewVBox(
-				components.NewImmutableText("Download Path Template", components.TextOptionBold()),
-				pathTemplateInput,
-				Indent(
-					components.NewImmutableText("Format Options: ", components.TextOptionBold()),
-					container.NewHBox(
-						components.NewImmutableText("%TITLE%", components.TextOptionBold()),
-						canvas.NewText(" - Full book title as seen in library", color.Black),
-					),
-					container.NewHBox(
-						components.NewImmutableText("%SHORT_TITLE%", components.TextOptionBold()),
-						canvas.NewText(" - Book title up to the first occurance of ", color.Black),
-						components.NewImmutableText(":", components.TextOptionBold()),
-					),
-					components.NewImmutableText("%AUTHOR%", components.TextOptionBold()),
-					Indent(
-						container.NewHBox(
-							components.NewImmutableText("Max number of authors to include (0 = unlimited): ", components.TextOptionBold()),
-							maxAuthorsInput,
-							components.NewImmutableText("Author separator: ", components.TextOptionBold()),
-							authorSeparatorInput,
-						),
-					),
-				),
-				components.NewImmutableText("Preview: ", components.TextOptionBold()),
-				previewText,
-			),
-			layout.NewSpacer(),
-			container.NewHBox(
-				layout.NewSpacer(),
-				widget.NewButton("Cancel", closeFunc),
-				widget.NewButton("Save", closeFunc),
-			),
-		),
-	)
 }
 
 func SaveLibrary(books []*audible.Book) error {

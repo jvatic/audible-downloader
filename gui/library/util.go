@@ -1,4 +1,4 @@
-package main
+package library
 
 import (
 	"image/color"
@@ -8,7 +8,22 @@ import (
 	"fyne.io/fyne"
 	"fyne.io/fyne/canvas"
 	"fyne.io/fyne/container"
+	"github.com/jvatic/audible-downloader/audible"
 )
+
+func BookStatusText(b *audible.Book) string {
+	if b.LocalPath == "" {
+		return "Status: Not Downloaded"
+	}
+	return "Status: Downloaded"
+}
+
+func PathFromFyneURI(uri fyne.ListableURI) string {
+	if uri == nil {
+		return ""
+	}
+	return filepath.Join(strings.SplitAfter(strings.TrimPrefix(uri.String(), "file://"), "/")...)
+}
 
 // FormatFilePath tries to fit the given path within the given width
 func FormatFilePath(p string, width int) string {

@@ -1,4 +1,4 @@
-package main
+package signin
 
 import (
 	"context"
@@ -11,10 +11,11 @@ import (
 	"fyne.io/fyne/widget"
 	"github.com/jvatic/audible-downloader/audible"
 	"github.com/jvatic/audible-downloader/gui/components"
+	"github.com/jvatic/audible-downloader/gui/prompt"
 	log "github.com/sirupsen/logrus"
 )
 
-func SignIn(renderQueue chan<- func(w fyne.Window)) (*audible.Client, error) {
+func Run(renderQueue chan<- func(w fyne.Window)) (*audible.Client, error) {
 	var loading bool
 	var username, password string
 	var usernameMtx, passwordMtx sync.RWMutex
@@ -186,13 +187,13 @@ func doSignin(renderQueue chan<- func(w fyne.Window), username, password string,
 		audible.OptionUsername(username),
 		audible.OptionPassword(password),
 		audible.OptionCaptcha(func(imgURL string) string {
-			return PromptCaptcha(renderQueue, imgURL)
+			return prompt.PromptCaptcha(renderQueue, imgURL)
 		}),
 		audible.OptionAuthCode(func() string {
-			return PromptString(renderQueue, "Auth Code (OTP)")
+			return prompt.PromptString(renderQueue, "Auth Code (OTP)")
 		}),
 		audible.OptionPromptChoice(func(msg string, opts []string) int {
-			return PromptChoice(renderQueue, msg, opts)
+			return prompt.PromptChoice(renderQueue, msg, opts)
 		}),
 	)
 	if err != nil {

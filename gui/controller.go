@@ -6,6 +6,8 @@ import (
 
 	"fyne.io/fyne"
 	"github.com/jvatic/audible-downloader/audible"
+	"github.com/jvatic/audible-downloader/gui/library"
+	"github.com/jvatic/audible-downloader/gui/signin"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -57,7 +59,7 @@ func (c *Controller) Run(w fyne.Window) {
 	// 	}
 	// }
 
-	client, err := SignIn(c.render)
+	client, err := signin.Run(c.render)
 	if err != nil {
 		ShowFatalErrorDialog(c.render, err)
 		return
@@ -79,13 +81,13 @@ func (c *Controller) Run(w fyne.Window) {
 	sort.Sort(audible.ByTitle(books))
 	{
 		// TODO: remove this block
-		if err := SaveLibrary(books); err != nil {
+		if err := library.SaveLibrary(books); err != nil {
 			log.Warn(err)
 		}
 	}
 
-	stateCh := NewLibState(client, activationBytes, books)
-	if err := Library(w, c.render, stateCh); err != nil {
+	stateCh := library.NewState(client, activationBytes, books)
+	if err := library.Run(w, c.render, stateCh); err != nil {
 		ShowFatalErrorDialog(c.render, err)
 		return
 	}
