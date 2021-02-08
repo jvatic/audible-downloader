@@ -74,7 +74,7 @@ func logResponseBody(resp *http.Response) log.LogFunction {
 			t = "text/plain"
 		}
 		exts, err := mime.ExtensionsByType(t)
-		if err != nil {
+		if err != nil || len(exts) < 1 {
 			exts = []string{".txt"}
 		}
 		p := filepath.Join(config.Dir(), "debug", fmt.Sprintf("%02d%s", nBody, exts[0]))
