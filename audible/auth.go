@@ -29,7 +29,6 @@ func (c *Client) Authenticate(ctx context.Context) error {
 	// we're not authenticated, so run through the full signin process
 	steps := []authStep{
 		s.getLandingPage,
-		s.overrideIPRedirect,
 		s.getSigninPage,
 		s.doSignin,
 		s.handleCaptcha,
@@ -286,11 +285,11 @@ func (s *authState) getMessageBoxString() string {
 }
 
 func (s *authState) getLandingPage(ctx context.Context) error {
-	log.Debug("getLandingPage")
+	log.Debug("getLandingPage / override IP Redirect")
 
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
-		"GET", "https://www.audible.ca/en_CA/?ipRedirectOverride=true", nil)
+		"GET", "/?ipRedirectOverride=true", nil)
 	resp, err := s.c.Do(req)
 	if err != nil {
 		return err
@@ -302,28 +301,6 @@ func (s *authState) getLandingPage(ctx context.Context) error {
 	}
 	s.doc = doc
 	s.lastResponse = resp
-	return nil
-}
-
-func (s *authState) overrideIPRedirect(ctx context.Context) error {
-	log.Debug("overrideIPRedirect")
-
-	if a := htmlquery.FindOne(s.doc, "//a[contains(@href, 'RedirectOverride=true')]"); a != nil {
-		req, err := http.NewRequestWithContext(
-			utils.ContextWithCancelChan(context.Background(), ctx.Done()),
-			"GET", htmlquery.SelectAttr(a, "href"), nil)
-		resp, err := s.c.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		doc, err := htmlquery.Parse(resp.Body)
-		if err != nil {
-			return err
-		}
-		s.doc = doc
-		s.lastResponse = resp
-	}
 	return nil
 }
 
