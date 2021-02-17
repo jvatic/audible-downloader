@@ -31,6 +31,7 @@ github.com/acarl005/stripansi
 ## explicit
 github.com/antchfx/htmlquery
 # github.com/antchfx/xpath v1.1.6
+## explicit
 github.com/antchfx/xpath
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -137,5 +138,3 @@ golang.org/x/text/runes
 golang.org/x/text/transform
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# src.techknowlogick.com/xgo v1.2.1-0.20210120013813-c3fef1e88e60
-## explicit

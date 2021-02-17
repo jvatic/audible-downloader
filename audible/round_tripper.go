@@ -6,10 +6,14 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/antchfx/htmlquery"
+	"github.com/antchfx/xpath"
 	"github.com/jvatic/audible-downloader/internal/config"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,7 +38,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("DNT", "1")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
 
-	log.Debugf("%s %s", req.Method, req.URL)
+	log.Debugf("%s %s", req.Method, redactURL(req.URL))
 	log.TraceFn(logHeader(req.Header, "User-Agent"))
 
 	resp, err := http.DefaultTransport.RoundTrip(req)
@@ -42,7 +46,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
-	log.Debugf("-> %s: %s", resp.Request.URL, resp.Status)
+	log.Debugf("-> %s: %s", redactURL(resp.Request.URL), resp.Status)
 	log.TraceFn(logHeader(resp.Header, "Content-Type"))
 	log.TraceFn(logResponseBody(resp))
 
@@ -83,7 +87,11 @@ func logResponseBody(resp *http.Response) log.LogFunction {
 		if err != nil {
 			return []interface{}{fmt.Sprintf("error saving response body to %q: %s", p, err)}
 		}
-		io.Copy(file, bytes.NewReader(buf.Bytes()))
+		if strings.HasPrefix(exts[0], ".htm") {
+			io.Copy(file, bytes.NewReader(redactHTML(buf.Bytes())))
+		} else {
+			io.Copy(file, bytes.NewReader(buf.Bytes()))
+		}
 		return []interface{}{fmt.Sprintf("response body saved to %q", p)}
 	}
 }
@@ -92,4 +100,53 @@ func logHeader(h http.Header, name string) log.LogFunction {
 	return func() []interface{} {
 		return []interface{}{fmt.Sprintf("%s: %s", name, h.Get(name))}
 	}
+}
+
+func redactURL(u *url.URL) *url.URL {
+	redacted := &url.URL{
+		Scheme:   u.Scheme,
+		Opaque:   u.Opaque,
+		Host:     u.Host,
+		Path:     u.Path,
+		RawQuery: redactQuery(u.Query()).Encode(),
+	}
+	return redacted
+}
+
+var redactQueryAllowlist = map[string]bool{"ipRedirectOverride": true}
+
+func redactQuery(q url.Values) url.Values {
+	redacted := make(url.Values, len(q))
+	for k, v := range q {
+		if allowed, ok := redactQueryAllowlist[k]; allowed && ok {
+			redacted[k] = v
+		} else {
+			redacted[k] = []string{"REDACTED"}
+		}
+	}
+	return redacted
+}
+
+var (
+	findScriptTags   = xpath.MustCompile("//script")
+	findHiddenInputs = xpath.MustCompile(`//input[@type="hidden"]`)
+)
+
+func redactHTML(data []byte) []byte {
+	doc, err := htmlquery.Parse(bytes.NewReader(data))
+	if err != nil {
+		return data
+	}
+
+	// remove all <script /> elements
+	for _, node := range htmlquery.QuerySelectorAll(doc, findScriptTags) {
+		node.Parent.RemoveChild(node)
+	}
+
+	// remove all hidden <input /> elements
+	for _, node := range htmlquery.QuerySelectorAll(doc, findHiddenInputs) {
+		node.Parent.RemoveChild(node)
+	}
+
+	return []byte(htmlquery.OutputHTML(doc, true))
 }

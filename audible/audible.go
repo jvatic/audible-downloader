@@ -88,7 +88,7 @@ func NewClient(opts ...Option) (*Client, error) {
 				return http.ErrUseLastResponse
 			}
 			log.TraceFn(func() []interface{} {
-				return []interface{}{fmt.Sprintf("Redirect: %s", req.URL)}
+				return []interface{}{fmt.Sprintf("Redirect: %s", redactURL(req.URL))}
 			})
 			c.lastURL = req.URL
 			return nil
