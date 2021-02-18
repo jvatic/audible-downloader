@@ -7,9 +7,8 @@ require (
 	github.com/antchfx/htmlquery v1.2.3
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/vbauerster/mpb/v5 v5.3.0
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-	src.techknowlogick.com/xgo v1.2.1-0.20210120013813-c3fef1e88e60 // indirect
 )
