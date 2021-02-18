@@ -28,19 +28,24 @@ func PaintImage(img *canvas.Image, c fyne.Canvas, width, height int) image.Image
 
 	switch {
 	case img.File != "" || img.Resource != nil:
-		var file io.Reader
-		var name string
+		var (
+			file  io.Reader
+			name  string
+			isSVG bool
+		)
 		if img.Resource != nil {
 			name = img.Resource.Name()
 			file = bytes.NewReader(img.Resource.Content())
+			isSVG = isResourceSVG(img.Resource)
 		} else {
 			name = img.File
 			handle, _ := os.Open(img.File)
 			defer handle.Close()
 			file = handle
+			isSVG = isFileSVG(img.File)
 		}
 
-		if strings.ToLower(filepath.Ext(name)) == ".svg" {
+		if isSVG {
 			tex := svgCacheGet(name, width, height)
 			if tex == nil {
 				// Not in cache, so load the item and add to cache
@@ -64,7 +69,7 @@ func PaintImage(img *canvas.Image, c fyne.Canvas, width, height int) image.Image
 
 				icon.SetTarget(0, 0, float64(texW), float64(texH))
 				// this is used by our render code, so let's set it to the file aspect
-				aspects[img.Resource] = aspect
+				aspects[name] = aspect
 				// if the image specifies it should be original size we need at least that many pixels on screen
 				if img.FillMode == canvas.ImageFillOriginal {
 					if !checkImageMinSize(img, c, origW, origH) {
@@ -97,7 +102,7 @@ func PaintImage(img *canvas.Image, c fyne.Canvas, width, height int) image.Image
 		}
 		origSize := pixels.Bounds().Size()
 		// this is used by our render code, so let's set it to the file aspect
-		aspects[img] = float32(origSize.X) / float32(origSize.Y)
+		aspects[name] = float32(origSize.X) / float32(origSize.Y)
 		// if the image specifies it should be original size we need at least that many pixels on screen
 		if img.FillMode == canvas.ImageFillOriginal {
 			if !checkImageMinSize(img, c, origSize.X, origSize.Y) {
@@ -162,4 +167,24 @@ func checkImageMinSize(img *canvas.Image, c fyne.Canvas, pixX, pixY int) bool {
 	}
 
 	return true
+}
+
+func isFileSVG(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".svg"
+}
+
+func isResourceSVG(res fyne.Resource) bool {
+	if strings.ToLower(filepath.Ext(res.Name())) == ".svg" {
+		return true
+	}
+
+	if len(res.Content()) < 5 {
+		return false
+	}
+
+	switch strings.ToLower(string(res.Content()[:5])) {
+	case "<!doc", "<?xml", "<svg ":
+		return true
+	}
+	return false
 }
