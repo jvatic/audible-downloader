@@ -91,13 +91,24 @@ outer:
 			break outer
 		}
 
-		for _, u := range visited {
-			if page.NextPageURL == u {
+		nextPageURL, err := url.Parse(page.NextPageURL)
+		if err != nil {
+			break outer
+		}
+
+		pageNumber := nextPageURL.Query().Get("page")
+		if pageNumber == "" {
+			break outer
+		}
+
+		for _, n := range visited {
+			if pageNumber == n {
 				break outer
 			}
 		}
 
-		visited = append(visited, page.NextPageURL)
+		visited = append(visited, pageNumber)
+
 		page, err = c.getLibraryPage(ctx, page.NextPageURL)
 		if err != nil {
 			return nil, err
@@ -161,7 +172,7 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 
 	page := &Page{}
 
-	paginationAnchors := htmlquery.Find(doc, "//a[@data-name = 'page']")
+	paginationAnchors := htmlquery.Find(doc, "//s/a[@data-name = 'page']")
 	if len(paginationAnchors) > 0 {
 		page.NextPageURL = htmlquery.SelectAttr(paginationAnchors[len(paginationAnchors)-1], "href")
 	}
