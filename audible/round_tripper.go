@@ -18,6 +18,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var redactEnabled = true
+
+func init() {
+	if v := os.Getenv("REDACT_DISABLE"); v == "true" {
+		redactEnabled = false
+	}
+}
+
 type roundTripper struct {
 }
 
@@ -103,6 +111,9 @@ func logHeader(h http.Header, name string) log.LogFunction {
 }
 
 func redactURL(u *url.URL) *url.URL {
+	if !redactEnabled {
+		return u
+	}
 	redacted := &url.URL{
 		Scheme:   u.Scheme,
 		Opaque:   u.Opaque,
@@ -116,6 +127,9 @@ func redactURL(u *url.URL) *url.URL {
 var redactQueryAllowlist = map[string]bool{"ipRedirectOverride": true}
 
 func redactQuery(q url.Values) url.Values {
+	if !redactEnabled {
+		return q
+	}
 	redacted := make(url.Values, len(q))
 	for k, v := range q {
 		if allowed, ok := redactQueryAllowlist[k]; allowed && ok {
@@ -133,6 +147,9 @@ var (
 )
 
 func redactHTML(data []byte) []byte {
+	if !redactEnabled {
+		return data
+	}
 	doc, err := htmlquery.Parse(bytes.NewReader(data))
 	if err != nil {
 		return data
