@@ -85,7 +85,7 @@ func DecryptAudioBook(opts ...option) error {
 	defer s.Close()
 
 	var stderr bytes.Buffer
-	cmd := exec.Command("ffmpeg", "-activation_bytes", d.activationBytes, "-progress", fmt.Sprintf("http://%s", s.Addr().String()), "-i", filename, "-vn", "-c:a", "copy", outPath)
+	cmd := exec.Command("ffmpeg", "-y", "-activation_bytes", d.activationBytes, "-progress", fmt.Sprintf("http://%s", s.Addr().String()), "-i", filename, "-vn", "-c:a", "copy", outPath)
 	cmd.Stdout = ioutil.Discard
 	cmd.Stderr = &stderr
 	cmd.Dir = filepath.Dir(d.inPath)
