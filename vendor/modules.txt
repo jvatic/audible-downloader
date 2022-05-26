@@ -27,10 +27,10 @@ fyne.io/fyne/widget
 github.com/VividCortex/ewma
 # github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 github.com/acarl005/stripansi
-# github.com/antchfx/htmlquery v1.2.4
+# github.com/antchfx/htmlquery v1.2.5
 ## explicit
 github.com/antchfx/htmlquery
-# github.com/antchfx/xpath v1.2.0
+# github.com/antchfx/xpath v1.2.1
 ## explicit
 github.com/antchfx/xpath
 # github.com/davecgh/go-spew v1.1.1
