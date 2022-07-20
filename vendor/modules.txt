@@ -78,14 +78,14 @@ github.com/mattn/go-runewidth
 github.com/mitchellh/go-homedir
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.0
 ## explicit
 github.com/sirupsen/logrus
 # github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
 github.com/srwiley/oksvg
 # github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
 github.com/srwiley/rasterx
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.7.0
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/vbauerster/mpb/v5 v5.4.0
@@ -110,7 +110,7 @@ golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
 golang.org/x/net/publicsuffix
-# golang.org/x/sys v0.0.0-20201218084310-7d0127a74742
+# golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
@@ -136,5 +136,5 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
-# gopkg.in/yaml.v2 v2.2.8
-gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3
