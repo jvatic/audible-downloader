@@ -216,6 +216,7 @@ func SetSelectedDir(uri fyne.ListableURI) Action {
 			if err != nil {
 				log.Errorf("Error discovering downloaded books: %s", err)
 			}
+			log.Debugf("Found %d local books", len(localBooks))
 			n := s.numSelected
 			for _, b := range localBooks {
 				if bi, ok := s.GetBookIndexForID(b.ID()); ok {
@@ -237,6 +238,8 @@ func SetSelectedDir(uri fyne.ListableURI) Action {
 						ch <- components.CheckboxActionSetChecked(false)
 						ch <- components.CheckboxActionDisable()
 					}
+				} else {
+					log.Debugf("unable to match local book: %s (%s)", b.ID(), b.Title)
 				}
 			}
 			s.SetNumSelected(n)

@@ -2,8 +2,6 @@ package audible
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"image"
 	"io"
@@ -37,12 +35,11 @@ type Book struct {
 }
 
 func (b *Book) ID() string {
-	h := sha1.New()
-	for _, name := range b.Authors {
-		io.WriteString(h, name)
+	parts := strings.Split(b.AudibleURL, "/")
+	if len(parts) == 0 {
+		return b.AudibleURL
 	}
-	io.WriteString(h, b.Title)
-	return hex.EncodeToString(h.Sum(nil))
+	return parts[len(parts)-1]
 }
 
 func (b *Book) WriteInfo(w io.Writer) error {
@@ -220,7 +217,7 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 				if u, err := url.Parse(htmlquery.SelectAttr(a, "href")); err == nil {
 					u = resp.Request.URL.ResolveReference(u)
 					u.RawQuery = "" // query is unnecessary baggage
-					book.AudibleURL = u.String()
+					book.AudibleURL = strings.Split(u.String(), "?")[0]
 				}
 			}
 			book.Title = strings.TrimSpace(htmlquery.InnerText(node))
@@ -281,6 +278,23 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 		}
 		if a := htmlquery.FindOne(row, "//a[contains(@href, '/companion-file/')]"); a != nil {
 			addDownloadURL(a)
+		}
+
+		if book.AudibleURL == "" && len(book.DownloadURLs) > 0 {
+			for _, du := range book.DownloadURLs {
+				log.Debugf("using download URL (%s) for AudibleURL", du)
+				if u, err := url.Parse(du); err == nil {
+					q := u.Query()
+					if asin := q.Get("asin"); asin != "" {
+						book.AudibleURL = fmt.Sprintf("https://audible.com/pd/%s", asin)
+					} else {
+						log.Debugf("unable to find asin in url(%s)", du)
+					}
+				} else {
+					log.Debugf("error parsing url(%s): %v", du, err)
+				}
+				break
+			}
 		}
 
 		page.Books = append(page.Books, book)

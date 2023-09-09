@@ -109,7 +109,7 @@ func (cli *CLI) GetNewBooks(books []*audible.Book) ([]*audible.Book, []*audible.
 		localBooksByID[b.ID()] = b
 	}
 
-	newBooks := make([]*audible.Book, 0, len(books)-len(localBooks))
+	newBooks := make([]*audible.Book, 0)
 	downloadedBooks := make([]*audible.Book, 0, len(localBooks))
 	for _, b := range books {
 		if dlb, ok := localBooksByID[b.ID()]; ok {
@@ -165,7 +165,10 @@ func (cli *CLI) DownloadLibrary(ctx context.Context, c *audible.Client) error {
 
 	getDstPath := PromptPathTemplate()
 	for _, b := range books {
-		b.LocalPath = filepath.Join(cli.DstDir, getDstPath(b))
+		p := filepath.Join(cli.DstDir, getDstPath(b))
+		if b.LocalPath == "" {
+			b.LocalPath = p
+		}
 	}
 
 loop:

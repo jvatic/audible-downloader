@@ -1,9 +1,12 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"image"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -81,14 +84,62 @@ func CompilePathTemplate(t string, subs ...PathTemplateSub) func(b *audible.Book
 	}
 }
 
-func ListDownloadedBooks(dir string) ([]*audible.Book, error) {
-	parseAuthors := func(str string) []string {
-		parts := strings.Split(str, ",")
-		for i, p := range parts {
-			parts[i] = strings.TrimSpace(p)
+type bookInfo struct {
+	Title     string
+	Authors   []string
+	Narrators []string
+	URL       string
+}
+
+func parseInfoTxt(data io.Reader) (*bookInfo, error) {
+	info := &bookInfo{}
+
+	s := bufio.NewScanner(data)
+
+	// the first line is the title
+	s.Scan()
+	info.Title = s.Text()
+
+	for s.Scan() {
+		line := s.Text()
+		if strings.HasPrefix(line, "Written by:") {
+			info.Authors = strings.Split(strings.TrimSpace(strings.TrimPrefix(line, "Written by:")), ", ")
+			continue
 		}
-		return parts
+		if strings.HasPrefix(line, "Narrated by:") {
+			info.Narrators = strings.Split(strings.TrimSpace(strings.TrimPrefix(line, "Narrated by:")), ", ")
+			continue
+		}
+		if strings.HasPrefix(line, "URL:") {
+			info.URL = strings.TrimSpace(strings.TrimPrefix(line, "URL:"))
+			continue
+		}
 	}
+
+	if len(info.Title) == 0 {
+		return nil, fmt.Errorf("invalid info.txt: missing book title")
+	}
+
+	if len(info.Authors) == 0 {
+		return nil, fmt.Errorf("invalid info.txt: missing book authors")
+	}
+
+	if len(info.Narrators) == 0 {
+		return nil, fmt.Errorf("invalid info.txt: missing book narrators")
+	}
+
+	if len(info.URL) == 0 {
+		return nil, fmt.Errorf("invalid info.txt: missing book URL")
+	}
+
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+
+	return info, nil
+}
+
+func ListDownloadedBooks(dir string) ([]*audible.Book, error) {
 	booksByID := make(map[string]*audible.Book)
 	books := make([]*audible.Book, 0)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -98,41 +149,56 @@ func ListDownloadedBooks(dir string) ([]*audible.Book, error) {
 		if info.IsDir() {
 			return nil
 		}
-		isMP4 := filepath.Ext(path) == ".mp4"
+
+		// identify existing books by their info.txt files
+		if filepath.Base(path) != "info.txt" {
+			return nil
+		}
+
 		file, err := os.Open(path)
 		if err != nil {
-			if isMP4 {
-				log.Warnf("Unable to read %s: %s", path, err)
-			}
-			return nil
+			log.Warnf("Unable to read %s: %s", path, err)
+			return err
 		}
 		defer file.Close()
-		if _, _, err := tag.Identify(file); err != nil {
-			if isMP4 {
-				log.Warnf("Unable to identify %s: %s", path, err)
-			}
-			return nil
-		}
-		meta, err := tag.ReadAtoms(file)
+		bookInfo, err := parseInfoTxt(file)
 		if err != nil {
-			if isMP4 {
-				log.Warnf("Unable to read tag data %s: %s", path, err)
-			}
-			return nil
+			log.Warnf("Unable to parse book info (%s): %s", path, err)
+			return err
 		}
-		if strings.ToLower(meta.Genre()) != "audiobook" {
-			return nil
-		}
-		var thumbImg image.Image
-		if p := meta.Picture(); p != nil {
-			thumbImg, _, _ = image.Decode(bytes.NewReader(p.Data))
-		}
+
 		b := &audible.Book{
-			Title:      meta.Title(),
-			Authors:    parseAuthors(meta.Artist()),
-			ThumbImage: thumbImg,
-			LocalPath:  path,
+			Title:      bookInfo.Title,
+			Authors:    bookInfo.Authors,
+			Narrators:  bookInfo.Narrators,
+			AudibleURL: bookInfo.URL,
 		}
+
+		isMP4 := false
+		exts := []string{".mp4", ".aax"}
+		m, err := filepath.Glob(filepath.Join(filepath.Dir(path), "*"))
+		if err != nil {
+			log.Debugf("unable to glob %s: %v", path, err)
+			return err
+		}
+		for _, e := range m {
+			for _, ext := range exts {
+				if strings.Contains(e, ext) {
+					if filepath.Ext(e) == ".mp4" {
+						isMP4 = true
+					}
+					e = strings.TrimSuffix(e, ".icloud")
+					b.LocalPath = e
+					log.Debugf("setting local path for book(%s): %s", b.ID(), e)
+				}
+			}
+		}
+
+		if b.LocalPath == "" {
+			log.Warnf("unable to find audio file for %s", path)
+			return nil
+		}
+
 		if eb := booksByID[b.ID()]; eb != nil {
 			// don't overwrite an mp4 entry (e.g. with an aax one)
 			if filepath.Ext(eb.LocalPath) == ".mp4" {
@@ -141,6 +207,41 @@ func ListDownloadedBooks(dir string) ([]*audible.Book, error) {
 		}
 		books = append(books, b)
 		booksByID[b.ID()] = b
+
+		if !isMP4 {
+			return nil
+		}
+
+		mp4File, err := os.Open(b.LocalPath)
+		if err != nil {
+			log.Warnf("Unable to read %s: %s", path, err)
+			return nil
+		}
+		defer mp4File.Close()
+		if _, _, err := tag.Identify(mp4File); err != nil {
+			log.Warnf("Unable to identify %s: %s", path, err)
+			return nil
+		}
+
+		meta, err := tag.ReadAtoms(mp4File)
+		if err != nil {
+			log.Warnf("Unable to read tag data %s: %s", path, err)
+			return nil
+		}
+		if strings.ToLower(meta.Genre()) != "audiobook" {
+			return nil
+		}
+
+		if title := meta.Title(); title != "" {
+			b.Title = title
+		}
+
+		var thumbImg image.Image
+		if p := meta.Picture(); p != nil {
+			thumbImg, _, _ = image.Decode(bytes.NewReader(p.Data))
+		}
+		b.ThumbImage = thumbImg
+
 		return nil
 	})
 	if err != nil {
