@@ -16,6 +16,7 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/jvatic/audible-downloader/internal/utils"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/html"
 )
 
 type Page struct {
@@ -172,9 +173,12 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 
 	page := &Page{}
 
-	paginationAnchors := htmlquery.Find(doc, "//s/a[@data-name = 'page']")
-	if len(paginationAnchors) > 0 {
-		page.NextPageURL = htmlquery.SelectAttr(paginationAnchors[len(paginationAnchors)-1], "href")
+	anchorElements := htmlquery.Find(doc, "//a]")
+	for _, a := range anchorElements {
+		if strings.TrimSpace(htmlquery.InnerText(a)) == "Go forward a page" {
+			page.NextPageURL = htmlquery.SelectAttr(a, "href")
+			break
+		}
 	}
 
 	for _, row := range htmlquery.Find(doc, "//div[contains(@id, 'adbl-library-content-row-')]") {
@@ -197,44 +201,61 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 			book.Title = strings.TrimSpace(htmlquery.InnerText(node))
 		}
 
-		if node := htmlquery.FindOne(row, "//li[contains(@class, 'authorLabel')]"); node != nil {
-			authors := []string{}
-			for _, a := range htmlquery.Find(node, "//a") {
-				authors = append(authors, strings.TrimSpace(htmlquery.InnerText(a)))
+		foundAuthors := false
+		foundNarrators := false
+		for _, li := range htmlquery.Find(row, "//li") {
+			if foundAuthors && foundNarrators {
+				break
 			}
-			book.Authors = authors
-		}
-
-		if node := htmlquery.FindOne(row, "//li[contains(@class, 'narratorLabel')]"); node != nil {
-			narrators := []string{}
-			for _, a := range htmlquery.Find(node, "//a") {
-				narrators = append(narrators, strings.TrimSpace(htmlquery.InnerText(a)))
+			text := strings.TrimSpace(htmlquery.InnerText(li))
+			if strings.HasPrefix(text, "Written by:") {
+				authors := []string{}
+				for _, a := range htmlquery.Find(li, "//a") {
+					authors = append(authors, strings.TrimSpace(htmlquery.InnerText(a)))
+				}
+				book.Authors = authors
+				foundAuthors = true
+				continue
 			}
-			book.Narrators = narrators
+			if strings.HasPrefix(text, "Narrated by:") {
+				narrators := []string{}
+				for _, a := range htmlquery.Find(li, "//a") {
+					narrators = append(narrators, strings.TrimSpace(htmlquery.InnerText(a)))
+				}
+				book.Narrators = narrators
+				foundNarrators = true
+				continue
+			}
 		}
 
 		book.DownloadURLs = make(map[string]string)
-		if col := htmlquery.FindOne(row, "//div[contains(@class, 'adbl-library-action')]"); col != nil {
-			for _, a := range htmlquery.Find(col, "//a") {
-				href, err := url.Parse(htmlquery.SelectAttr(a, "href"))
-				if err != nil {
-					continue
-				}
-				if !href.IsAbs() {
-					href = resp.Request.URL.ResolveReference(href)
-				}
-				text := strings.TrimSpace(htmlquery.InnerText(a))
-				hasURL := false
-				for _, du := range book.DownloadURLs {
-					if du == href.String() {
-						hasURL = true
-						break
-					}
-				}
-				if !hasURL {
-					book.DownloadURLs[text] = href.String()
+		addDownloadURL := func(a *html.Node) error {
+			href, err := url.Parse(htmlquery.SelectAttr(a, "href"))
+			if err != nil {
+				return err
+			}
+			if !href.IsAbs() {
+				href = resp.Request.URL.ResolveReference(href)
+			}
+			text := strings.TrimSpace(htmlquery.InnerText(a))
+			hasURL := false
+			for _, du := range book.DownloadURLs {
+				if du == href.String() {
+					hasURL = true
+					break
 				}
 			}
+			if !hasURL {
+				book.DownloadURLs[text] = href.String()
+			}
+			return nil
+		}
+
+		for _, a := range htmlquery.Find(row, "//a[contains(@href, '/download?')]") {
+			addDownloadURL(a)
+		}
+		if a := htmlquery.FindOne(row, "//a[contains(@href, '/companion-file/')]"); a != nil {
+			addDownloadURL(a)
 		}
 
 		page.Books = append(page.Books, book)
