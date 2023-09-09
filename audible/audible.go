@@ -101,7 +101,7 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	u, err := url.Parse(c.rawBaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("Valid BaseURL is required")
+		return nil, fmt.Errorf("valid BaseURL is required")
 	}
 	c.baseURL = u
 	c.Client.Transport = &roundTripper{}

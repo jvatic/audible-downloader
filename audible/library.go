@@ -47,24 +47,51 @@ func (b *Book) ID() string {
 
 func (b *Book) WriteInfo(w io.Writer) error {
 	_, err := fmt.Fprintln(w, b.Title)
+	if err != nil {
+		return err
+	}
 
 	_, err = fmt.Fprint(w, "Written by: ")
+	if err != nil {
+		return err
+	}
 	for i, name := range b.Authors {
 		if i > 0 {
 			_, err = fmt.Fprint(w, ", ")
+			if err != nil {
+				return err
+			}
 		}
 		_, err = fmt.Fprint(w, name)
+		if err != nil {
+			return err
+		}
 	}
 	_, err = fmt.Fprintln(w, "")
+	if err != nil {
+		return err
+	}
 
 	_, err = fmt.Fprint(w, "Narrated by: ")
+	if err != nil {
+		return err
+	}
 	for i, name := range b.Narrators {
 		if i > 0 {
 			_, err = fmt.Fprint(w, ", ")
+			if err != nil {
+				return err
+			}
 		}
 		_, err = fmt.Fprint(w, name)
+		if err != nil {
+			return err
+		}
 	}
 	_, err = fmt.Fprintln(w, "")
+	if err != nil {
+		return err
+	}
 
 	_, err = fmt.Fprintf(w, "URL: %s", b.AudibleURL)
 	return err
@@ -151,8 +178,6 @@ outer:
 
 	return books, nil
 }
-
-var nSaved int = 0
 
 func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, error) {
 	// fetch library page

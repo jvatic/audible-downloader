@@ -82,18 +82,18 @@ func (cli *CLI) Run(runCtx context.Context) error {
 		}),
 	)
 	if err != nil {
-		return fmt.Errorf("Error creating client: %w\n", err)
+		return fmt.Errorf("error creating client: %w", err)
 	}
 
 	if err := c.Authenticate(utils.ContextWithCancelChan(context.Background(), runCtx.Done())); err != nil {
-		return fmt.Errorf("Error authenticating: %w\n", err)
+		return fmt.Errorf("error authenticating: %w", err)
 	}
 
 	if err := cli.DownloadLibrary(
 		utils.ContextWithCancelChan(context.Background(), runCtx.Done()),
 		c,
 	); err != nil {
-		return fmt.Errorf("Error downloading library: %w", err)
+		return fmt.Errorf("error downloading library: %w", err)
 	}
 
 	return nil
@@ -129,13 +129,13 @@ func (cli *CLI) GetNewBooks(books []*audible.Book) ([]*audible.Book, []*audible.
 func (cli *CLI) DownloadLibrary(ctx context.Context, c *audible.Client) error {
 	activationBytes, err := c.GetActivationBytes(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting activation bytes: %s", err)
+		return fmt.Errorf("error getting activation bytes: %s", err)
 	}
 	log.Debugf("Activation Bytes: %s\n", string(activationBytes))
 
 	books, err := c.GetLibrary(ctx)
 	if err != nil {
-		return fmt.Errorf("Error reading library: %s\n", err)
+		return fmt.Errorf("error reading library: %s", err)
 	}
 
 	cli.DstDir = PromptDownloadDir()
@@ -143,7 +143,7 @@ func (cli *CLI) DownloadLibrary(ctx context.Context, c *audible.Client) error {
 	var downloadedBooks []*audible.Book
 	books, downloadedBooks, err = cli.GetNewBooks(books)
 	if err != nil {
-		return fmt.Errorf("Error filtering library: %w\n", err)
+		return fmt.Errorf("error filtering library: %w", err)
 	}
 
 	// write info.txt file for all books already downloaded
@@ -178,7 +178,7 @@ loop:
 			for i, b := range books {
 				fmt.Printf("%02d) %s by %s\n", i+1, b.Title, strings.Join(b.Authors, ", "))
 			}
-			break
+			break loop
 		default:
 			return fmt.Errorf("download aborted")
 		}
@@ -201,7 +201,7 @@ loop:
 
 	dlm, err := downloader.NewDownloader(downloader.OptionLogWriter(logFile))
 	if err != nil {
-		return fmt.Errorf("Error initializing downloader: %s\n", err)
+		return fmt.Errorf("error initializing downloader: %s", err)
 	}
 
 	var wg sync.WaitGroup
@@ -227,12 +227,12 @@ loop:
 
 		dir := filepath.Dir(book.LocalPath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			pushError(fmt.Errorf("Error creating dir for %q: %s", book.Title, err))
+			pushError(fmt.Errorf("error creating dir for %q: %s", book.Title, err))
 			return
 		}
 
 		if err := common.WriteInfoFile(filepath.Dir(book.LocalPath), book); err != nil {
-			pushError(fmt.Errorf("Error writing info file for %q: %s", book.Title, err))
+			pushError(fmt.Errorf("error writing info file for %q: %s", book.Title, err))
 		}
 
 		var bookwg sync.WaitGroup
@@ -252,10 +252,7 @@ loop:
 					downloader.DownloadOptionDetectFilename(),
 					downloader.DownloadOptionHTTPClient(client),
 					downloader.DownloadOptionFilter(func(dl *downloader.Download) bool {
-						if strings.Contains(dl.OutputPath(), "Part") {
-							return false
-						}
-						return true
+						return !strings.Contains(dl.OutputPath(), "Part")
 					}),
 					downloader.DownloadOptionProgress(func(totalBytes int64, completedBytes int64) {
 						if bar == nil {
@@ -284,7 +281,7 @@ loop:
 						fmt.Fprintf(logFile, "Skipping %s\n", dl.OutputPath())
 						return
 					}
-					pushError(fmt.Errorf("Error downloading %s: %s\n", u, err))
+					pushError(fmt.Errorf("error downloading %s: %s", u, err))
 				}
 
 				outPath := dl.OutputPath()
@@ -312,12 +309,12 @@ loop:
 							bar.SetCurrent(completedBytes)
 						}),
 					); err != nil {
-						pushError(fmt.Errorf("Error decrypting %s: %s", u, err))
+						pushError(fmt.Errorf("error decrypting %s: %s", u, err))
 					}
 
 					// remove original .aax file
 					if err := os.Remove(outPath); err != nil {
-						pushError(fmt.Errorf("Error removing .aax file for %q: %s", book.Title, err))
+						pushError(fmt.Errorf("error removing .aax file for %q: %s", book.Title, err))
 					}
 				}
 			}(u)

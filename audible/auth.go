@@ -79,7 +79,7 @@ func (c *Client) GetPlayerToken(ctx context.Context) (string, error) {
 
 	playerToken := c.lastURL.Query().Get("playerToken")
 	if playerToken == "" {
-		return "", fmt.Errorf("Unable to get player token")
+		return "", fmt.Errorf("unable to get player token")
 	}
 
 	log.Debugf("PlayerToken: %s", playerToken)
@@ -178,7 +178,7 @@ func ExtractActivationBytes(data io.Reader) ([]byte, error) {
 		// make sure (version=1), our extraction process may need updating for any
 		// future versions
 		if version != "1" {
-			return nil, fmt.Errorf("Expected version=1, got version=%s", version)
+			return nil, fmt.Errorf("expected version=1, got version=%s", version)
 		}
 
 		// pick up first part of the current key (see next block)
@@ -210,7 +210,7 @@ func ExtractActivationBytes(data io.Reader) ([]byte, error) {
 		}
 		return activationBytes, nil
 	}
-	return nil, fmt.Errorf("Invalid input data")
+	return nil, fmt.Errorf("invalid input data")
 }
 
 func generatePlayerID() string {
@@ -290,6 +290,9 @@ func (s *authState) getLandingPage(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
 		"GET", "/?ipRedirectOverride=true", nil)
+	if err != nil {
+		return err
+	}
 	resp, err := s.c.Do(req)
 	if err != nil {
 		return err
@@ -312,13 +315,16 @@ func (s *authState) getSigninPage(ctx context.Context) error {
 	if a := htmlquery.FindOne(s.doc, "//a[contains(@class, 'ui-it-sign-in-link')]"); a != nil {
 		signinURL = htmlquery.SelectAttr(a, "href")
 	} else {
-		return fmt.Errorf("Unable to find sign in link")
+		return fmt.Errorf("unable to find sign in link")
 	}
 
 	// fetch sign in page
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
 		"GET", signinURL, nil)
+	if err != nil {
+		return err
+	}
 	resp, err := s.c.Do(req)
 	if err != nil {
 		return err
@@ -342,7 +348,7 @@ func (s *authState) doSignin(ctx context.Context) error {
 	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
 		actionURL, data = s.parseForm(form)
 	} else {
-		return fmt.Errorf("Unable to parse form action")
+		return fmt.Errorf("unable to parse form action")
 	}
 	// add username and password to form values
 	data.Set("email", s.c.username)
@@ -395,7 +401,7 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
 		actionURL, data = s.parseForm(form)
 	} else {
-		return fmt.Errorf("Unable to parse form action")
+		return fmt.Errorf("unable to parse form action")
 	}
 	// add username and password to form values
 	data.Set("email", s.c.username)
@@ -460,7 +466,7 @@ func (s *authState) doOTPSelectionForm(ctx context.Context, form *html.Node) err
 		optionLabels = append(optionLabels, labelText)
 	}
 	if len(options) == 0 {
-		return errors.New("Unable to detect Two-Step verification options")
+		return errors.New("unable to detect Two-Step verification options")
 	}
 
 	option := options[s.c.getChoice("Choose where to receive the One Time Password (OTP)", optionLabels)]
@@ -526,6 +532,9 @@ func (s *authState) confirmAuth(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(
 		utils.ContextWithCancelChan(context.Background(), ctx.Done()),
 		"GET", "/lib", nil)
+	if err != nil {
+		return err
+	}
 	resp, err := s.c.Do(req)
 	if err != nil {
 		return err
