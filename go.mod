@@ -7,9 +7,10 @@ require (
 	github.com/antchfx/htmlquery v1.2.5
 	github.com/antchfx/xpath v1.2.1
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
+	github.com/gcottom/mp3-mp4-tag v1.2.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/vbauerster/mpb/v5 v5.4.0
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 )

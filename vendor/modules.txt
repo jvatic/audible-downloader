@@ -23,8 +23,14 @@ fyne.io/fyne/storage
 fyne.io/fyne/test
 fyne.io/fyne/theme
 fyne.io/fyne/widget
+# github.com/Sorrow446/go-mp4tag v0.0.0-20220705231847-a6f24ef004f0
+github.com/Sorrow446/go-mp4tag
 # github.com/VividCortex/ewma v1.1.1
 github.com/VividCortex/ewma
+# github.com/abema/go-mp4 v0.7.2
+github.com/abema/go-mp4
+github.com/abema/go-mp4/bitio
+github.com/abema/go-mp4/util
 # github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 github.com/acarl005/stripansi
 # github.com/antchfx/htmlquery v1.2.5
@@ -33,6 +39,8 @@ github.com/antchfx/htmlquery
 # github.com/antchfx/xpath v1.2.1
 ## explicit
 github.com/antchfx/xpath
+# github.com/bogem/id3v2 v1.2.0
+github.com/bogem/id3v2
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
@@ -52,6 +60,15 @@ github.com/fyne-io/mobile/exp/f32
 github.com/fyne-io/mobile/geom
 github.com/fyne-io/mobile/gl
 github.com/fyne-io/mobile/internal/mobileinit
+# github.com/gcottom/mp3-mp4-tag v1.2.2
+## explicit
+github.com/gcottom/mp3-mp4-tag
+# github.com/go-flac/flacpicture v0.3.0
+github.com/go-flac/flacpicture
+# github.com/go-flac/flacvorbis v0.2.0
+github.com/go-flac/flacvorbis
+# github.com/go-flac/go-flac v1.0.0
+github.com/go-flac/go-flac
 # github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7
 github.com/go-gl/gl/v3.1/gles2
 github.com/go-gl/gl/v3.2-core/gl
@@ -71,6 +88,8 @@ github.com/goki/freetype/raster
 github.com/goki/freetype/truetype
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 github.com/golang/groupcache/lru
+# github.com/google/uuid v1.1.2
+github.com/google/uuid
 # github.com/mattn/go-runewidth v0.0.9
 github.com/mattn/go-runewidth
 # github.com/mitchellh/go-homedir v1.1.0
@@ -88,13 +107,15 @@ github.com/srwiley/rasterx
 # github.com/stretchr/testify v1.5.1
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
+# github.com/sunfish-shogi/bufseekio v0.1.0
+github.com/sunfish-shogi/bufseekio
 # github.com/vbauerster/mpb/v5 v5.4.0
 ## explicit
 github.com/vbauerster/mpb/v5
 github.com/vbauerster/mpb/v5/cwriter
 github.com/vbauerster/mpb/v5/decor
 github.com/vbauerster/mpb/v5/internal
-# golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
+# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 ## explicit
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/image v0.0.0-20200430140353-33d19683fad8
@@ -104,21 +125,21 @@ golang.org/x/image/font
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
 golang.org/x/image/vector
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+# golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 ## explicit
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
 golang.org/x/net/publicsuffix
-# golang.org/x/sys v0.0.0-20201218084310-7d0127a74742
+# golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.0.0-20201117132131-f5c789dd3221
+# golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 golang.org/x/term
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.7.0
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
