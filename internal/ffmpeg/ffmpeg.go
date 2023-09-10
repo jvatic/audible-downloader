@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"io/ioutil"
 	"net"
@@ -14,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	tag "github.com/gcottom/mp3-mp4-tag"
 	"github.com/jvatic/audible-downloader/internal/utils"
 )
 
@@ -76,7 +79,11 @@ func DecryptAudioBook(opts ...option) error {
 	}
 	inputSize := fi.Size()
 
-	extractCoverPhoto(d.inPath)
+	cover, err := extractCoverPhoto(d.inPath)
+	if err == nil {
+		// TODO: log errors
+		saveCoverPhoto(cover, filepath.Dir(d.inPath))
+	}
 
 	s, err := startProgressServer(outPath, inputSize, d.progressHook)
 	if err != nil {
@@ -94,6 +101,12 @@ func DecryptAudioBook(opts ...option) error {
 		return err
 	}
 
+	if cover != nil {
+		if err := embedCoverPhoto(cover, outPath); err != nil {
+			// TODO: log error
+		}
+	}
+
 	if d.progressHook != nil {
 		// the output size is smaller than the input size, this reports it as completed
 		d.progressHook(inputSize, inputSize)
@@ -102,17 +115,38 @@ func DecryptAudioBook(opts ...option) error {
 	return nil
 }
 
-func extractCoverPhoto(inPath string) (string, error) {
-	outPath := filepath.Base(filepath.Join(filepath.Dir(inPath), "cover.png"))
-	var stderr bytes.Buffer
-	cmd := exec.Command("ffmpeg", "-y", "-i", filepath.Base(inPath), outPath)
-	cmd.Stdout = ioutil.Discard
-	cmd.Stderr = &stderr
-	cmd.Dir = filepath.Dir(inPath)
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("Error extracting cover photo: %v", err)
+func saveCoverPhoto(img image.Image, dir string) error {
+	coverPath := filepath.Join(dir, "cover.jpg")
+	file, err := os.OpenFile(coverPath, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		return err
 	}
-	return outPath, nil
+	defer file.Close()
+	return jpeg.Encode(file, img, &jpeg.Options{Quality: 100})
+}
+
+func extractCoverPhoto(inPath string) (image.Image, error) {
+	idTag, err := tag.OpenTag(inPath)
+	if err != nil {
+		return nil, err
+	}
+
+	img := idTag.AlbumArt()
+	if img == nil {
+		return nil, fmt.Errorf("no cover image found")
+	}
+
+	return *img, nil
+}
+
+func embedCoverPhoto(img image.Image, path string) error {
+	idTag, err := tag.OpenTag(path)
+	if err != nil {
+		return err
+	}
+
+	idTag.SetAlbumArtFromImage(&img)
+	return idTag.Save()
 }
 
 type progressServer struct {

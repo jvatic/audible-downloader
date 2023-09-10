@@ -2,6 +2,7 @@ package mp3mp4tag
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"log"
 	"os"
@@ -24,7 +25,7 @@ func parse(filepath string) (*IDTag, error) {
 		//use the mp3TagLib
 		tag, err := mp3TagLib.Open(filepath, mp3TagLib.Options{Parse: true})
 		if err != nil {
-			log.Fatal("Error while opening mp3 file: ", err)
+			fmt.Fprintf(os.Stderr, "Error while opening mp3 file: %v", err)
 			return nil, err
 		}
 		defer tag.Close()
@@ -34,7 +35,7 @@ func parse(filepath string) (*IDTag, error) {
 		if bpmFramer != nil {
 			bpm, ok := bpmFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert bpm frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert bpm frame")
 			} else {
 				resultTag.bpm = bpm.Text
 			}
@@ -43,7 +44,7 @@ func parse(filepath string) (*IDTag, error) {
 		if commentFramer != nil {
 			comment, ok := commentFramer.(mp3TagLib.CommentFrame)
 			if !ok {
-				log.Fatal("Couldn't assert comment frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert comment frame")
 			} else {
 				resultTag.comments = comment.Text
 			}
@@ -52,7 +53,7 @@ func parse(filepath string) (*IDTag, error) {
 		if composerFramer != nil {
 			composer, ok := composerFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert composer frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert composer frame")
 			} else {
 				resultTag.composer = composer.Text
 			}
@@ -61,7 +62,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert album artist frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert album artist frame")
 			} else {
 				resultTag.albumArtist = ex.Text
 			}
@@ -70,7 +71,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert copyright frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert copyright frame")
 			} else {
 				resultTag.idTagExtended.copyrightMsg = ex.Text
 			}
@@ -79,7 +80,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert date frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert date frame")
 			} else {
 				resultTag.idTagExtended.date = ex.Text
 			}
@@ -88,7 +89,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert encoded by frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert encoded by frame")
 			} else {
 				resultTag.idTagExtended.encodedBy = ex.Text
 			}
@@ -97,7 +98,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert lyricist frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert lyricist frame")
 			} else {
 				resultTag.idTagExtended.lyricist = ex.Text
 			}
@@ -106,7 +107,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert file type frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert file type frame")
 			} else {
 				resultTag.idTagExtended.fileType = ex.Text
 			}
@@ -115,7 +116,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert language frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert language frame")
 			} else {
 				resultTag.idTagExtended.language = ex.Text
 			}
@@ -124,7 +125,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert length frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert length frame")
 			} else {
 				resultTag.idTagExtended.length = ex.Text
 			}
@@ -133,7 +134,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert part of set frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert part of set frame")
 			} else {
 				resultTag.idTagExtended.partOfSet = ex.Text
 			}
@@ -142,7 +143,7 @@ func parse(filepath string) (*IDTag, error) {
 		if exFramer != nil {
 			ex, ok := exFramer.(mp3TagLib.TextFrame)
 			if !ok {
-				log.Fatal("Couldn't assert publisher frame")
+				fmt.Fprintf(os.Stderr, "Couldn't assert publisher frame")
 			} else {
 				resultTag.idTagExtended.publisher = ex.Text
 			}
@@ -204,7 +205,7 @@ func parse(filepath string) (*IDTag, error) {
 		}
 		f, err := flac.ParseBytes(file)
 		if err != nil {
-			log.Fatal("Error opening album image")
+			fmt.Fprintf(os.Stderr, "Error opening album image")
 		}
 		var pic *flacpicture.MetadataBlockPicture
 		for _, meta := range f.Meta {
@@ -218,7 +219,7 @@ func parse(filepath string) (*IDTag, error) {
 		if pic != nil {
 			img, _, err := image.Decode(bytes.NewReader(pic.ImageData))
 			if err != nil {
-				log.Fatal("Error opening album image")
+				fmt.Fprintf(os.Stderr, "Error opening album image")
 			}
 			resultTag.albumArt = &img
 		} else {
@@ -227,13 +228,13 @@ func parse(filepath string) (*IDTag, error) {
 	} else if *fileType == "ogg" {
 		f, err := os.Open(filepath)
 		if err != nil {
-			log.Fatal("Error while opening file: ", err)
+			fmt.Fprintf(os.Stderr, "Error while opening file: %v", err)
 			return nil, err
 		}
 		defer f.Close()
 		tag, err := ReadOGGTags(f)
 		if err != nil {
-			log.Fatal("Error reading ogg tag", err)
+			fmt.Fprintf(os.Stderr, "Error reading ogg tag: %v", err)
 			return nil, err
 		}
 		resultTag = *tag
@@ -241,13 +242,13 @@ func parse(filepath string) (*IDTag, error) {
 	} else {
 		f, err := os.Open(filepath)
 		if err != nil {
-			log.Fatal("Error while opening file: ", err)
+			fmt.Fprintf(os.Stderr, "Error while opening file: %v", err)
 			return nil, err
 		}
 		defer f.Close()
 		tag, err := ReadFromMP4(f)
 		if err != nil {
-			log.Fatal("Error while reading file: ", err)
+			fmt.Fprintf(os.Stderr, "Error while reading file: %v", err)
 			return nil, err
 		}
 		resultTag = IDTag{artist: tag.Artist(), albumArtist: tag.AlbumArtist(), album: tag.Album(), comments: tag.Comment(), composer: tag.Composer(), genre: tag.Genre(), title: tag.Title(), year: strconv.Itoa(tag.Year())}
@@ -257,7 +258,7 @@ func parse(filepath string) (*IDTag, error) {
 			albumArt := tag.Picture()
 			img, _, err := image.Decode(bytes.NewReader(albumArt))
 			if err != nil {
-				log.Fatal("Error opening album image")
+				fmt.Fprintf(os.Stderr, "Error opening album image")
 			}
 			resultTag.albumArt = &img
 		} else {
