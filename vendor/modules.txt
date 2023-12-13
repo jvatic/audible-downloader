@@ -30,7 +30,7 @@ github.com/acarl005/stripansi
 # github.com/antchfx/htmlquery v1.2.5
 ## explicit
 github.com/antchfx/htmlquery
-# github.com/antchfx/xpath v1.2.1
+# github.com/antchfx/xpath v1.2.5
 ## explicit
 github.com/antchfx/xpath
 # github.com/davecgh/go-spew v1.1.1
