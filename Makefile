@@ -31,16 +31,16 @@ $(WINDOWS_GUI):
 	mv $(shell find $(WINDOWS_GUI)-*.exe) $(WINDOWS_GUI).exe
 
 $(WINDOWS_CLI):
-	env GOOS=windows GOARCH=amd64 go build -i -v -o $(WINDOWS_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=windows GOARCH=amd64 go build -v -o $(WINDOWS_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(LINUX_CLI):
-	env GOOS=linux GOARCH=amd64 go build -i -v -o $(LINUX_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=linux GOARCH=amd64 go build -v -o $(LINUX_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 $(DARWIN_GUI):
-	env GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -i -v -o $(DARWIN_GUI) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
+	env GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -v -o $(DARWIN_GUI) -ldflags="-s -w -X main.version=$(VERSION)" ./gui
 
 $(DARWIN_CLI):
-	env GOOS=darwin GOARCH=amd64 go build -i -v -o $(DARWIN_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
+	env GOOS=darwin GOARCH=amd64 go build -v -o $(DARWIN_CLI) -ldflags="-s -w -X main.version=$(VERSION)" ./cli
 
 clean: ## Remove previous build
 	rm -f $(WINDOWS_GUI).exe
