@@ -34,6 +34,7 @@ func (c *Client) Authenticate(ctx context.Context) error {
 		s.handleCaptcha,
 		s.handleOTPSelection,
 		s.handleOTP,
+		s.handleCaptcha,
 		s.confirmAuth,
 	}
 
@@ -345,7 +346,7 @@ func (s *authState) doSignin(ctx context.Context) error {
 	// Sign in
 	var actionURL string
 	var data url.Values
-	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
+	if form := htmlquery.FindOne(s.doc, "//form[@method]"); form != nil {
 		actionURL, data = s.parseForm(form)
 	} else {
 		return fmt.Errorf("unable to parse form action")
@@ -375,11 +376,16 @@ func (s *authState) handleCaptcha(ctx context.Context) error {
 	log.Debug("handleCaptcha")
 
 	for {
-		if img := htmlquery.FindOne(s.doc, "//img[@id = 'auth-captcha-image']"); img != nil {
+		if img := htmlquery.FindOne(s.doc, "//form//img"); img != nil {
+			if a := htmlquery.FindOne(s.doc, "//form//a[text()=\"Try different image\"]"); a == nil {
+				return nil
+			}
 			if msg := s.getMessageBoxString(); msg != "" {
 				log.Error(msg)
 			}
-			s.doCaptchaForm(ctx, img)
+			if err := s.doCaptchaForm(ctx, img); err != nil {
+				return err
+			}
 		} else {
 			return nil
 		}
@@ -398,7 +404,7 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 
 	var actionURL string
 	var data url.Values
-	if form := htmlquery.FindOne(s.doc, "//form[@name = 'signIn']"); form != nil {
+	if form := htmlquery.FindOne(s.doc, "//form[@method]"); form != nil {
 		actionURL, data = s.parseForm(form)
 	} else {
 		return fmt.Errorf("unable to parse form action")
