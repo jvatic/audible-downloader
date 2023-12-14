@@ -8,7 +8,7 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/abema/go-mp4/bitio"
+	"github.com/abema/go-mp4/internal/bitio"
 )
 
 const (
@@ -16,6 +16,29 @@ const (
 )
 
 var ErrUnsupportedBoxVersion = errors.New("unsupported box version")
+
+func readerHasSize(reader bitio.ReadSeeker, size uint64) bool {
+	pre, err := reader.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return false
+	}
+
+	end, err := reader.Seek(0, io.SeekEnd)
+	if err != nil {
+		return false
+	}
+
+	if uint64(end-pre) < size {
+		return false
+	}
+
+	_, err = reader.Seek(pre, io.SeekStart)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
 
 type marshaller struct {
 	writer bitio.Writer
@@ -230,25 +253,18 @@ func (m *marshaller) marshalString(v reflect.Value) error {
 }
 
 func (m *marshaller) writeUvarint(u uint64) error {
-	if u == 0 {
-		if err := m.writer.WriteBits([]byte{0}, 8); err != nil {
+	for i := 21; i > 0; i -= 7 {
+		if err := m.writer.WriteBits([]byte{(byte(u >> uint(i))) | 0x80}, 8); err != nil {
 			return err
 		}
 		m.wbits += 8
-		return nil
 	}
-	for i := 63; i >= 0; i -= 7 {
-		if u>>uint(i) != 0 {
-			data := byte(u>>uint(i)) & 0x7f
-			if i != 0 {
-				data |= 0x80
-			}
-			if err := m.writer.WriteBits([]byte{data}, 8); err != nil {
-				return err
-			}
-			m.wbits += 8
-		}
+
+	if err := m.writer.WriteBits([]byte{byte(u) & 0x7f}, 8); err != nil {
+		return err
 	}
+	m.wbits += 8
+
 	return nil
 }
 
@@ -424,12 +440,13 @@ func (u *unmarshaller) unmarshalSlice(v reflect.Value, fi *fieldInstance) error 
 		}
 	}
 
-	if length > math.MaxInt32 {
-		return fmt.Errorf("out of memory: requestedSize=%d", length)
-	}
-
-	if fi.size != 0 && fi.size%8 == 0 && u.rbits%8 == 0 && elemType.Kind() == reflect.Uint8 && fi.size == 8 {
+	if u.rbits%8 == 0 && elemType.Kind() == reflect.Uint8 && fi.size == 8 {
 		totalSize := length * uint64(fi.size) / 8
+
+		if !readerHasSize(u.reader, totalSize) {
+			return fmt.Errorf("not enough bits")
+		}
+
 		buf := bytes.NewBuffer(make([]byte, 0, totalSize))
 		if _, err := io.CopyN(buf, u.reader, int64(totalSize)); err != nil {
 			return err
@@ -438,7 +455,7 @@ func (u *unmarshaller) unmarshalSlice(v reflect.Value, fi *fieldInstance) error 
 		u.rbits += uint64(totalSize) * 8
 
 	} else {
-		slice = reflect.MakeSlice(v.Type(), 0, int(length))
+		slice = reflect.MakeSlice(v.Type(), 0, 0)
 		for i := 0; ; i++ {
 			if fi.length != LengthUnlimited && uint(i) >= fi.length {
 				break

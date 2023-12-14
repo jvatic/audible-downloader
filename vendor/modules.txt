@@ -1,5 +1,5 @@
 # fyne.io/fyne v1.4.3
-## explicit
+## explicit; go 1.12
 fyne.io/fyne
 fyne.io/fyne/app
 fyne.io/fyne/canvas
@@ -24,31 +24,39 @@ fyne.io/fyne/test
 fyne.io/fyne/theme
 fyne.io/fyne/widget
 # github.com/Sorrow446/go-mp4tag v0.0.0-20220705231847-a6f24ef004f0
+## explicit; go 1.17
 github.com/Sorrow446/go-mp4tag
-# github.com/VividCortex/ewma v1.1.1
+# github.com/VividCortex/ewma v1.2.0
+## explicit; go 1.12
 github.com/VividCortex/ewma
-# github.com/abema/go-mp4 v0.7.2
+# github.com/abema/go-mp4 v1.1.1
+## explicit; go 1.14
 github.com/abema/go-mp4
-github.com/abema/go-mp4/bitio
-github.com/abema/go-mp4/util
+github.com/abema/go-mp4/internal/bitio
+github.com/abema/go-mp4/internal/util
 # github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+## explicit
 github.com/acarl005/stripansi
-# github.com/antchfx/htmlquery v1.2.5
-## explicit
+# github.com/antchfx/htmlquery v1.3.0
+## explicit; go 1.14
 github.com/antchfx/htmlquery
-# github.com/antchfx/xpath v1.2.1
-## explicit
+# github.com/antchfx/xpath v1.2.5
+## explicit; go 1.14
 github.com/antchfx/xpath
 # github.com/bogem/id3v2 v1.2.0
+## explicit; go 1.13
 github.com/bogem/id3v2
 # github.com/davecgh/go-spew v1.1.1
-github.com/davecgh/go-spew/spew
-# github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
 ## explicit
+github.com/davecgh/go-spew/spew
+# github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25
+## explicit; go 1.18
 github.com/dhowden/tag
-# github.com/fsnotify/fsnotify v1.4.9
+# github.com/fsnotify/fsnotify v1.7.0
+## explicit; go 1.17
 github.com/fsnotify/fsnotify
 # github.com/fyne-io/mobile v0.1.2
+## explicit; go 1.11
 github.com/fyne-io/mobile/app
 github.com/fyne-io/mobile/app/internal/callfn
 github.com/fyne-io/mobile/event/key
@@ -60,19 +68,26 @@ github.com/fyne-io/mobile/exp/f32
 github.com/fyne-io/mobile/geom
 github.com/fyne-io/mobile/gl
 github.com/fyne-io/mobile/internal/mobileinit
-# github.com/gcottom/mp3-mp4-tag v1.2.2
-## explicit
-github.com/gcottom/mp3-mp4-tag
+# github.com/gcottom/audiometa v1.2.5
+## explicit; go 1.20
+github.com/gcottom/audiometa
 # github.com/go-flac/flacpicture v0.3.0
+## explicit; go 1.20
 github.com/go-flac/flacpicture
 # github.com/go-flac/flacvorbis v0.2.0
+## explicit; go 1.20
 github.com/go-flac/flacvorbis
 # github.com/go-flac/go-flac v1.0.0
+## explicit; go 1.12
 github.com/go-flac/go-flac
-# github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7
+# github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
+## explicit; go 1.12
 github.com/go-gl/gl/v3.1/gles2
+github.com/go-gl/gl/v3.1/gles2/KHR
 github.com/go-gl/gl/v3.2-core/gl
-# github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200625191551-73d3c3675aa3
+github.com/go-gl/gl/v3.2-core/gl/KHR
+# github.com/go-gl/glfw/v3.3/glfw v0.0.0-20231124074035-2de0cf0c80af
+## explicit; go 1.10
 github.com/go-gl/glfw/v3.3/glfw
 github.com/go-gl/glfw/v3.3/glfw/glfw/deps
 github.com/go-gl/glfw/v3.3/glfw/glfw/deps/glad
@@ -80,66 +95,82 @@ github.com/go-gl/glfw/v3.3/glfw/glfw/deps/mingw
 github.com/go-gl/glfw/v3.3/glfw/glfw/deps/vs2008
 github.com/go-gl/glfw/v3.3/glfw/glfw/include/GLFW
 github.com/go-gl/glfw/v3.3/glfw/glfw/src
-# github.com/godbus/dbus/v5 v5.0.3
+# github.com/godbus/dbus/v5 v5.1.0
+## explicit; go 1.12
 github.com/godbus/dbus/v5
-# github.com/goki/freetype v0.0.0-20181231101311-fa8a33aabaff
+# github.com/goki/freetype v1.0.1
+## explicit; go 1.18
 github.com/goki/freetype
 github.com/goki/freetype/raster
 github.com/goki/freetype/truetype
-# github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+# github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+## explicit
 github.com/golang/groupcache/lru
-# github.com/google/uuid v1.1.2
+# github.com/google/uuid v1.5.0
+## explicit
 github.com/google/uuid
-# github.com/mattn/go-runewidth v0.0.9
+# github.com/mattn/go-runewidth v0.0.15
+## explicit; go 1.9
 github.com/mattn/go-runewidth
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
 # github.com/pmezard/go-difflib v1.0.0
-github.com/pmezard/go-difflib/difflib
-# github.com/sirupsen/logrus v1.8.1
 ## explicit
+github.com/pmezard/go-difflib/difflib
+# github.com/rivo/uniseg v0.4.4
+## explicit; go 1.18
+github.com/rivo/uniseg
+# github.com/sirupsen/logrus v1.9.3
+## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
+# github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
+## explicit; go 1.17
 github.com/srwiley/oksvg
-# github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
+# github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
+## explicit; go 1.17
 github.com/srwiley/rasterx
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/sunfish-shogi/bufseekio v0.1.0
+## explicit
 github.com/sunfish-shogi/bufseekio
 # github.com/vbauerster/mpb/v5 v5.4.0
-## explicit
+## explicit; go 1.14
 github.com/vbauerster/mpb/v5
 github.com/vbauerster/mpb/v5/cwriter
 github.com/vbauerster/mpb/v5/decor
 github.com/vbauerster/mpb/v5/internal
-# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-## explicit
+# golang.org/x/crypto v0.16.0
+## explicit; go 1.18
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/image v0.0.0-20200430140353-33d19683fad8
+# golang.org/x/image v0.14.0
+## explicit; go 1.18
 golang.org/x/image/colornames
 golang.org/x/image/draw
 golang.org/x/image/font
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
 golang.org/x/image/vector
-# golang.org/x/net v0.0.0-20220722155237-a158d28d115b
-## explicit
+# golang.org/x/net v0.19.0
+## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
 golang.org/x/net/publicsuffix
-# golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.15.0
+## explicit; go 1.18
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+# golang.org/x/term v0.15.0
+## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.7.0
+# golang.org/x/text v0.14.0
+## explicit; go 1.18
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -157,5 +188,6 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
-# gopkg.in/yaml.v2 v2.2.8
-gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3

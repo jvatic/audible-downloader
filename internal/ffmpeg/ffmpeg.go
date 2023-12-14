@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	tag "github.com/gcottom/mp3-mp4-tag"
+	tag "github.com/gcottom/audiometa"
 	"github.com/jvatic/audible-downloader/internal/utils"
 )
 
