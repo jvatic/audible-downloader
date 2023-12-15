@@ -413,7 +413,7 @@ func (s *authState) doCaptchaForm(ctx context.Context, img *html.Node) error {
 	data.Set("email", s.c.username)
 	data.Set("password", s.c.password)
 	// add captcha
-	data.Set("guess", captcha)
+	data.Set("cvf_captcha_input", captcha)
 	// submit form
 	resp, err := s.submitForm(ctx, actionURL, data)
 	if err != nil {
