@@ -254,9 +254,6 @@ loop:
 					downloader.DownloadOptionURL(u),
 					downloader.DownloadOptionDetectFilename(),
 					downloader.DownloadOptionHTTPClient(client),
-					downloader.DownloadOptionFilter(func(dl *downloader.Download) bool {
-						return !strings.Contains(dl.OutputPath(), "Part")
-					}),
 					downloader.DownloadOptionProgress(func(totalBytes int64, completedBytes int64) {
 						if bar == nil {
 							bar = pbgroup.AddBar(totalBytes,

@@ -251,7 +251,8 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 		}
 
 		book.DownloadURLs = make(map[string]string)
-		addDownloadURL := func(a *html.Node) error {
+		ignoredDownloadURLs := make(map[string]string)
+		addDownloadURL := func(a *html.Node, ignorePart bool) error {
 			href, err := url.Parse(htmlquery.SelectAttr(a, "href"))
 			if err != nil {
 				return err
@@ -260,6 +261,10 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 				href = resp.Request.URL.ResolveReference(href)
 			}
 			text := strings.TrimSpace(htmlquery.InnerText(a))
+			if ignorePart && strings.HasPrefix(text, "Part ") {
+				ignoredDownloadURLs[text] = href.String()
+				return nil
+			}
 			hasURL := false
 			for _, du := range book.DownloadURLs {
 				if du == href.String() {
@@ -274,26 +279,36 @@ func (c *Client) getLibraryPage(ctx context.Context, pageURL string) (*Page, err
 		}
 
 		for _, a := range htmlquery.Find(row, "//a[contains(@href, '/download?')]") {
-			addDownloadURL(a)
+			addDownloadURL(a, true)
 		}
+
+		if len(book.DownloadURLs) == 0 {
+			// if no other download links are found, use the ignored ones
+			book.DownloadURLs = ignoredDownloadURLs
+		} else {
+			for dt, du := range ignoredDownloadURLs {
+				log.Debugf("Ignoring download link %q: %s", dt, du)
+			}
+		}
+
 		if a := htmlquery.FindOne(row, "//a[contains(@href, '/companion-file/')]"); a != nil {
-			addDownloadURL(a)
+			addDownloadURL(a, false)
 		}
 
 		if book.AudibleURL == "" && len(book.DownloadURLs) > 0 {
 			for _, du := range book.DownloadURLs {
-				log.Debugf("using download URL (%s) for AudibleURL", du)
 				if u, err := url.Parse(du); err == nil {
 					q := u.Query()
 					if asin := q.Get("asin"); asin != "" {
+						log.Debugf("using download URL (%s) for AudibleURL", du)
 						book.AudibleURL = fmt.Sprintf("https://audible.com/pd/%s", asin)
+						break
 					} else {
 						log.Debugf("unable to find asin in url(%s)", du)
 					}
 				} else {
 					log.Debugf("error parsing url(%s): %v", du, err)
 				}
-				break
 			}
 		}
 

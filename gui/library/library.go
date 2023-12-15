@@ -483,12 +483,6 @@ func StartDownloads(actionQueue chan<- Action) error {
 						downloader.DownloadOptionDetectFilename(),
 						downloader.DownloadOptionPreferFilename(utils.SwapFileExt(filepath.Base(dstPath), ".aax"), "audio/vnd.audible.aax"),
 						downloader.DownloadOptionHTTPClient(client),
-						downloader.DownloadOptionFilter(func(dl *downloader.Download) bool {
-							if strings.Contains(dl.OutputPath(), "Part") {
-								return false
-							}
-							return true
-						}),
 						downloader.DownloadOptionProgress(func(totalBytes int64, completedBytes int64) {
 							actionQueue <- SetBookStatusText(index, "Downloading...")
 							dlProgress.SetTotal(totalBytes)
