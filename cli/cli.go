@@ -181,7 +181,6 @@ loop:
 			for i, b := range books {
 				fmt.Printf("%02d) %s by %s\n", i+1, b.Title, strings.Join(b.Authors, ", "))
 			}
-			break loop
 		default:
 			return fmt.Errorf("download aborted")
 		}
