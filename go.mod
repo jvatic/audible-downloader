@@ -11,8 +11,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/vbauerster/mpb/v5 v5.4.0
-	golang.org/x/crypto v0.16.0
-	golang.org/x/net v0.19.0
+	golang.org/x/crypto v0.21.0
+	golang.org/x/net v0.21.0
 )
 
 require (
@@ -41,8 +41,8 @@ require (
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/sunfish-shogi/bufseekio v0.1.0 // indirect
 	golang.org/x/image v0.14.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
