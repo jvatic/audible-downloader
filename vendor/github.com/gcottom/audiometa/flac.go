@@ -5,10 +5,10 @@ import (
 	"github.com/go-flac/go-flac"
 )
 
-func extractFLACComment(fileName string) (*flacvorbis.MetaDataBlockVorbisComment, int) {
+func extractFLACComment(fileName string) (*flacvorbis.MetaDataBlockVorbisComment, int, error) {
 	f, err := flac.ParseFile(fileName)
 	if err != nil {
-		panic(err)
+		return nil, 0, err
 	}
 
 	var cmt *flacvorbis.MetaDataBlockVorbisComment
@@ -18,11 +18,11 @@ func extractFLACComment(fileName string) (*flacvorbis.MetaDataBlockVorbisComment
 			cmt, err = flacvorbis.ParseFromMetaDataBlock(*meta)
 			cmtIdx = idx
 			if err != nil {
-				panic(err)
+				return nil, 0, err
 			}
 		}
 	}
-	return cmt, cmtIdx
+	return cmt, cmtIdx, nil
 }
 func getFLACPictureIndex(metaIn []*flac.MetaDataBlock) int {
 	var cmtIdx = 0

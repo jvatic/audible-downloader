@@ -60,16 +60,14 @@ func (w *oggEncoder) writePackets(kind byte, granule int64, packets [][]byte) er
 	}
 
 	segtbl, car, cdr := w.segmentize(payload{packets[0], packets[1:], nil})
-	err := w.writePage(&h, segtbl, car)
-	if err != nil {
+	if err := w.writePage(&h, segtbl, car); err != nil {
 		return err
 	}
 
 	h.Flags |= COP
 	for len(cdr.leftover) > 0 {
 		segtbl, car, cdr = w.segmentize(cdr)
-		err = w.writePage(&h, segtbl, car)
-		if err != nil {
+		if err := w.writePage(&h, segtbl, car); err != nil {
 			return err
 		}
 	}

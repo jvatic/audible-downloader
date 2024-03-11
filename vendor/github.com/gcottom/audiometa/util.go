@@ -8,17 +8,18 @@ import (
 	"strings"
 )
 
-//GetFileType returns the file type of the file pointed to by filepath. If the filetype is not supported, an error is returned.
-func GetFileType(filepath string) (*string, error) {
-	fileTypeArr := strings.Split(filepath, ".")
-	lastIndex := len(fileTypeArr) - 1
-	fileType := fileTypeArr[lastIndex]
-	fileType = strings.ToLower(fileType)
-	if fileType == "mp3" || fileType == "m4p" || fileType == "m4a" || fileType == "m4b" || fileType == "mp4" || fileType == "flac" || fileType == "ogg" {
-		return &fileType, nil
-	} else {
-		return nil, errors.New("Format: Unsupported Format: " + fileType)
+// GetFileType returns the file type of the file pointed to by filepath. If the filetype is not supported, an error is returned.
+func GetFileType(filepath string) (string, error) {
+	sp := strings.Split(filepath, ".")
+	if len(sp) < 2 {
+		return "", errors.New("unsupported file extension or no extension")
 	}
+	for _, ft := range supportedFileTypes {
+		if strings.ToLower(sp[len(sp)-1]) == ft {
+			return ft, nil
+		}
+	}
+	return "", errors.New("unsupported file extension or no extension")
 }
 
 func getInt(b []byte) int {

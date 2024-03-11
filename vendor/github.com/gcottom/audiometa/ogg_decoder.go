@@ -104,8 +104,7 @@ func (d *oggDecoder) decodeOgg() (oggPage, error) {
 
 	nsegs := int(h.Segments)
 	segtbl := d.buf[headerSize : headerSize+nsegs]
-	_, err := io.ReadFull(d.r, segtbl)
-	if err != nil {
+	if _, err := io.ReadFull(d.r, segtbl); err != nil {
 		return oggPage{}, err
 	}
 
@@ -127,8 +126,7 @@ func (d *oggDecoder) decodeOgg() (oggPage, error) {
 	}
 
 	payload := d.buf[headerSize+nsegs : headerSize+nsegs+payloadlen]
-	_, err = io.ReadFull(d.r, payload)
-	if err != nil {
+	if _, err := io.ReadFull(d.r, payload); err != nil {
 		return oggPage{}, err
 	}
 
