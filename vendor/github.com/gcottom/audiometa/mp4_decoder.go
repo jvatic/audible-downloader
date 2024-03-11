@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"image"
 	"io"
 	"strconv"
 	"strings"
@@ -13,8 +14,8 @@ import (
 var atomTypes = map[int]string{
 	0:  "implicit", // automatic based on atom name
 	1:  "text",
-	13: "jpeg",
-	14: "png",
+	13: "png",
+	14: "jpg",
 	21: "uint8",
 }
 
@@ -202,10 +203,8 @@ func (m metadataMP4) readAtomData(r io.ReadSeeker, name string, size uint32, pro
 		data = getInt(b[:1])
 
 	case "jpeg", "png":
-		data = &Picture{
-			Ext:      contentType,
-			MIMEType: "image/" + contentType,
-			Data:     b,
+		if img, _, err := image.Decode(bytes.NewReader(b)); err == nil {
+			data = &img
 		}
 	}
 	m.data[name] = data
@@ -331,18 +330,12 @@ func (m metadataMP4) comment() string {
 	return t.(string)
 }
 
-func (m metadataMP4) picture() []byte {
+func (m metadataMP4) picture() *image.Image {
 	v, ok := m.data["covr"]
 	if !ok {
 		return nil
 	}
-	p, _ := v.(*Picture)
-	if p != nil {
-		r := p.Data
-		return r
-	} else {
-		return nil
-	}
+	return v.(*image.Image)
 
 }
 

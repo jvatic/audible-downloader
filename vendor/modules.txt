@@ -23,13 +23,10 @@ fyne.io/fyne/storage
 fyne.io/fyne/test
 fyne.io/fyne/theme
 fyne.io/fyne/widget
-# github.com/Sorrow446/go-mp4tag v0.0.0-20220705231847-a6f24ef004f0
-## explicit; go 1.17
-github.com/Sorrow446/go-mp4tag
 # github.com/VividCortex/ewma v1.2.0
 ## explicit; go 1.12
 github.com/VividCortex/ewma
-# github.com/abema/go-mp4 v1.1.1
+# github.com/abema/go-mp4 v1.2.0
 ## explicit; go 1.14
 github.com/abema/go-mp4
 github.com/abema/go-mp4/internal/bitio
@@ -37,15 +34,18 @@ github.com/abema/go-mp4/internal/util
 # github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 ## explicit
 github.com/acarl005/stripansi
+# github.com/aler9/writerseeker v1.1.0
+## explicit; go 1.18
+github.com/aler9/writerseeker
 # github.com/antchfx/htmlquery v1.3.0
 ## explicit; go 1.14
 github.com/antchfx/htmlquery
 # github.com/antchfx/xpath v1.2.5
 ## explicit; go 1.14
 github.com/antchfx/xpath
-# github.com/bogem/id3v2 v1.2.0
+# github.com/bogem/id3v2/v2 v2.1.4
 ## explicit; go 1.13
-github.com/bogem/id3v2
+github.com/bogem/id3v2/v2
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -68,8 +68,8 @@ github.com/fyne-io/mobile/exp/f32
 github.com/fyne-io/mobile/geom
 github.com/fyne-io/mobile/gl
 github.com/fyne-io/mobile/internal/mobileinit
-# github.com/gcottom/audiometa v1.2.5
-## explicit; go 1.20
+# github.com/gcottom/audiometa v1.3.1
+## explicit; go 1.21.6
 github.com/gcottom/audiometa
 # github.com/go-flac/flacpicture v0.3.0
 ## explicit; go 1.20
@@ -106,7 +106,7 @@ github.com/goki/freetype/truetype
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
-# github.com/google/uuid v1.5.0
+# github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
 # github.com/mattn/go-runewidth v0.0.15

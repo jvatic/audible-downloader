@@ -1,13 +1,14 @@
 module github.com/jvatic/audible-downloader
 
 go 1.21
+toolchain go1.22.1
 
 require (
 	fyne.io/fyne v1.4.3
 	github.com/antchfx/htmlquery v1.3.0
 	github.com/antchfx/xpath v1.2.5
 	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25
-	github.com/gcottom/audiometa v1.2.5
+	github.com/gcottom/audiometa v1.3.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/vbauerster/mpb/v5 v5.4.0
@@ -16,11 +17,11 @@ require (
 )
 
 require (
-	github.com/Sorrow446/go-mp4tag v0.0.0-20220705231847-a6f24ef004f0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
-	github.com/abema/go-mp4 v1.1.1 // indirect
+	github.com/abema/go-mp4 v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-	github.com/bogem/id3v2 v1.2.0 // indirect
+	github.com/aler9/writerseeker v1.1.0 // indirect
+	github.com/bogem/id3v2/v2 v2.1.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fyne-io/mobile v0.1.2 // indirect
@@ -32,7 +33,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/goki/freetype v1.0.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
